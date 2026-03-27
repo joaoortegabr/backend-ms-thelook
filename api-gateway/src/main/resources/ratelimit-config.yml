@@ -1,0 +1,13 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: ms-auth
+          uri: lb://ms-auth
+          predicates:
+            - Path=/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20

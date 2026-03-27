@@ -1,0 +1,6 @@
+filters:
+  - name: Retry
+    args:
+      retries: 3
+      methods: GET
+      statuses: BAD_GATEWAY

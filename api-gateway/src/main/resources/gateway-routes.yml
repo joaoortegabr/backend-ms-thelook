@@ -1,0 +1,42 @@
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+
+      routes:
+        - id: ms-auth
+          uri: lb://ms-auth
+          predicates:
+            - Path=/api/v1/auth/**, /auth/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY
+            - name: CircuitBreaker
+              args:
+                name: authCircuitBreaker
+                fallbackUri: forward:/fallback/auth
+
+        - id: ms-social
+          uri: lb://ms-social
+          predicates:
+            - Path=/api/v1/creators/**
+          filters:
+
+        - id: ms-creation
+          uri: lb://ms-creation
+          predicates:
+            - Path=/api/v1/creation/outfits/**
+            - Path=/api/v1/creation/items/**
+          filters:
+
+        - id: ms-feed
+          uri: lb://ms-feed
+          predicates:
+            - Path=/api/v1/outfits/**
+          filters:
