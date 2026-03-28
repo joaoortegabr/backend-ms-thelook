@@ -1,18 +1,26 @@
+gateway:
+  security:
+    public-paths:
+      - "/api/v1/auth/login"
+      - "/api/v1/auth/register"
+      - "/api/v1/auth/refresh"
+      - "/eureka"
+
 spring:
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: false
-          lower-case-service-id: true
-
       routes:
         - id: ms-auth
           uri: lb://ms-auth
           predicates:
-            - Path=/api/v1/auth/**, /auth/**
+            - Path=/api/v1/auth/**
           filters:
             - name: JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
             - name: Retry
               args:
                 retries: 3
@@ -21,12 +29,22 @@ spring:
               args:
                 name: authCircuitBreaker
                 fallbackUri: forward:/fallback/auth
+                statusCodes:
+                  - 502
+                  - 503
+                  - 504
 
         - id: ms-social
           uri: lb://ms-social
           predicates:
             - Path=/api/v1/creators/**
           filters:
+            - name: JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
 
         - id: ms-creation
           uri: lb://ms-creation
@@ -34,9 +52,16 @@ spring:
             - Path=/api/v1/creation/outfits/**
             - Path=/api/v1/creation/items/**
           filters:
+            - name: JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
 
         - id: ms-feed
           uri: lb://ms-feed
           predicates:
             - Path=/api/v1/outfits/**
           filters:
+            - name: JwtAuthenticationFilter

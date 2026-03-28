@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
 
-    @Value("${jwt.expiration}")
+    @Value("${jwt-token.expiration}")
     private long EXPIRATION_TIME;
 
     private final UserRepository userRepository;
@@ -56,9 +56,8 @@ public class AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new UnprocessableRequestException("Invalid username or password"));
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.password(), user.getPassword()))
             throw new UnprocessableRequestException("Invalid username or password");
-        }
 
         String redisKey = "user:profile:" + user.getId();
         String creatorId = redisTemplate.opsForValue().get(redisKey);

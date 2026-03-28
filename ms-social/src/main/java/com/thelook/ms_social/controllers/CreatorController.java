@@ -1,11 +1,10 @@
 package com.thelook.ms_social.controllers;
 
-import com.thelook.ms_social.entities.Creator;
 import com.thelook.ms_social.models.dtos.CreatorRequest;
 import com.thelook.ms_social.models.dtos.CreatorResponse;
 import com.thelook.ms_social.models.dtos.CreatorUpdateRequest;
 import com.thelook.ms_social.services.CreatorService;
-import com.thelook.ms_social.mappers.CreatorMapper;
+import com.thelook.ms_social.models.mappers.CreatorMapper;
 import org.mapstruct.factory.Mappers;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -3,4 +3,4 @@ filters:
     args:
       retries: 3
       methods: GET
-      statuses: BAD_GATEWAY
+      statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE

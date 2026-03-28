@@ -1,4 +1,4 @@
-package com.thelook.ms_social.mappers;
+package com.thelook.ms_social.models.mappers;
 
 import com.thelook.ms_social.entities.Creator;
 import com.thelook.ms_social.models.dtos.CreatorRequest;
@@ -9,7 +9,10 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel="spring")
 public interface CreatorMapper {
 
-    @Mapping(target = "id", ignore = true)
+    @Mapping(target="id", ignore=true)
+    @Mapping(target="userId", ignore=true)
+    @Mapping(target="createdAt", ignore=true)
+    @Mapping(target="isActive", ignore=true)
     Creator toCreator(CreatorRequest creatorRequest);
 
     CreatorResponse toCreatorResponse(Creator creator);

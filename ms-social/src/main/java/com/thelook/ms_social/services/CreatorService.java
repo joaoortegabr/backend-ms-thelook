@@ -4,7 +4,6 @@ import com.thelook.exceptions.ResourceNotFoundException;
 import com.thelook.ms_social.entities.Creator;
 import com.thelook.ms_social.entities.CreatorNode;
 import com.thelook.ms_social.models.dtos.CreatorRequest;
-import com.thelook.ms_social.models.dtos.CreatorResponse;
 import com.thelook.ms_social.models.dtos.CreatorUpdateRequest;
 import com.thelook.ms_social.repositories.CreatorNodeRepository;
 import com.thelook.ms_social.repositories.CreatorRepository;

@@ -13,30 +13,23 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-
 @Component
 public class JwtAuthenticationFilterGatewayFilterFactory
         extends AbstractGatewayFilterFactory<JwtAuthenticationFilterGatewayFilterFactory.Config>
         implements Ordered {
 
-    private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/auth/login",
-            "/api/v1/auth/register",
-            "/api/v1/auth/refresh",
-            "/auth/login",
-            "/eureka"
-    );
-
     private final JwtService jwtService;
     private final ReactiveRedisOperations<String, String> redisOps;
+    private final GatewaySecurityProperties securityProperties;
 
     public JwtAuthenticationFilterGatewayFilterFactory(JwtService jwtService,
                                                        @Qualifier("reactiveRedisOperations")
-                                                       ReactiveRedisOperations<String, String> redisOps) {
+                                                       ReactiveRedisOperations<String, String> redisOps,
+                                                       GatewaySecurityProperties securityProperties) {
         super(Config.class);
         this.jwtService = jwtService;
         this.redisOps = redisOps;
+        this.securityProperties = securityProperties;
     }
 
     @Override
@@ -73,13 +66,14 @@ public class JwtAuthenticationFilterGatewayFilterFactory
                                 proceedWithHeaders(exchange, chain::filter, userId, username, role, null)));
 
             } catch (Exception e) {
+                System.out.println(">>>>>>Erro ao validar token===" + e.getMessage());
                 return Mono.error(new UnauthorizedException("Token inválido ou expirado"));
             }
         };
     }
 
     private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+        return securityProperties.getPublicPaths().stream().anyMatch(path::startsWith);
     }
 
     private Mono<Void> proceedWithHeaders(ServerWebExchange exchange,
