@@ -1,15 +1,17 @@
 package com.thelook.ms_social.services;
 
+import com.thelook.exceptions.BusinessRuleException;
 import com.thelook.exceptions.ResourceNotFoundException;
 import com.thelook.ms_social.entities.Creator;
-import com.thelook.ms_social.entities.CreatorNode;
 import com.thelook.ms_social.models.dtos.CreatorRequest;
 import com.thelook.ms_social.models.dtos.CreatorUpdateRequest;
-import com.thelook.ms_social.repositories.CreatorNodeRepository;
 import com.thelook.ms_social.repositories.CreatorRepository;
-import jakarta.transaction.Transactional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -17,17 +19,18 @@ import java.util.UUID;
 @Service
 public class CreatorService {
 
+    private static final Logger log = LoggerFactory.getLogger(CreatorService.class);
     private final long CACHE_DURATION_DAYS = 90;
 
+    private final CreatorNodeService creatorNodeService;
     private final CreatorRepository creatorRepository;
-    private final CreatorNodeRepository creatorNodeRepository;
     private final StringRedisTemplate redisTemplate;
 
-    public CreatorService(CreatorRepository creatorRepository, 
-                          CreatorNodeRepository creatorNodeRepository,
+    public CreatorService(CreatorNodeService creatorNodeService,
+                          CreatorRepository creatorRepository,
                           StringRedisTemplate redisTemplate) {
+        this.creatorNodeService = creatorNodeService;
         this.creatorRepository = creatorRepository;
-        this.creatorNodeRepository = creatorNodeRepository;
         this.redisTemplate = redisTemplate;
     }
 
@@ -35,36 +38,44 @@ public class CreatorService {
         return creatorRepository.findIdByCreatorId(creatorId)
                 .orElseThrow(() -> new ResourceNotFoundException(creatorId));
     }
-    
-    @Transactional
+
+    @Transactional(transactionManager = "transactionManager")
     public Creator create(UUID userId, CreatorRequest request) {
 
-        Creator creator = new Creator(
-                userId,
-                request.name(),
-                request.avatarUrl(),
-                request.bio(),
-                request.instagram(),
-                request.birthDate(),
-                request.city(),
-                request.uf()
-        );
-        creator.setIsActive(true);
-        creatorRepository.save(creator);
+        Creator creator;
+        try {
+            creator = new Creator(
+                    userId,
+                    request.name(),
+                    request.avatarUrl(),
+                    request.bio(),
+                    request.instagram(),
+                    request.birthDate(),
+                    request.city(),
+                    request.uf());
+            creator.setIsActive(true);
+            creatorRepository.save(creator);
+        } catch(RuntimeException e) {
+            throw new BusinessRuleException("Username already associated to another account: " + e.getMessage());
+        }
 
-        creatorNodeRepository.save(new CreatorNode(creator.getId(), creator.getName()));
-
-        String redisKey = "user:profile:" + userId;
+        saveCreatorToNeo4j(creator);
         redisTemplate.opsForValue().set(
-                redisKey,
+                "user:profile:" + userId,
                 creator.getId().toString(),
                 Duration.ofDays(CACHE_DURATION_DAYS)
         );
-
+        log.info("/////New Creator registered={},{},{}/{}",
+                request.name(), request.instagram(), request.city(), request.uf());
         return creator;
     }
 
-    @Transactional
+    @Transactional(transactionManager = "neo4jTransactionManager")
+    private void saveCreatorToNeo4j(Creator creator) {
+        creatorNodeService.save(creator);
+    }
+
+    @Transactional(transactionManager = "transactionManager")
     public Creator update(UUID creatorId, CreatorUpdateRequest request) {
 
         Creator creator = findById(creatorId);
@@ -84,15 +95,20 @@ public class CreatorService {
         return creator;
     }
 
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public String delete(UUID creatorId) {
+        try {
+            creatorRepository.deleteById(creatorId);
+            deleteCreatorFromNeo4j(creatorId);
+            return "Registro removido com sucesso.";
+        } catch(Exception e) {
+            throw new ResourceNotFoundException("Error deleting register: " + e.getMessage());
+        }
+    }
 
-        if (!creatorRepository.existsById(creatorId))
-            throw new ResourceNotFoundException("Creator not found");
-
-        creatorRepository.deleteById(creatorId);
-        creatorNodeRepository.deepDeleteCreator(creatorId);
-        return "Registro removido com sucesso.";
+    @Transactional(transactionManager = "neo4jTransactionManager")
+    private void deleteCreatorFromNeo4j(UUID creatorId) {
+        creatorNodeService.delete(creatorId);
     }
 
 }

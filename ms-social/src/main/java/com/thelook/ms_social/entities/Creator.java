@@ -31,6 +31,8 @@ public class Creator {
     private LocalDate createdAt;
     @Column(nullable = false)
     private boolean isActive;
+    @Column(name = "followers_count")
+    private long followersCount = 0;
 
     public Creator() {
     }
@@ -142,6 +144,14 @@ public class Creator {
 
     public void setIsActive(boolean active) {
         isActive = active;
+    }
+
+    public long getFollowersCount() {
+        return followersCount;
+    }
+
+    public void setFollowersCount(long followersCount) {
+        this.followersCount = followersCount;
     }
 
     @Override

@@ -13,7 +13,7 @@ import java.util.UUID;
 public class CreatorNode {
 
     @Id
-    private UUID id;
+    private UUID creatorId;
     private String name;
 
     @Relationship(type = "FOLLOWS", direction = Relationship.Direction.OUTGOING)
@@ -22,17 +22,17 @@ public class CreatorNode {
     public CreatorNode() {
     }
 
-    public CreatorNode(UUID id, String name) {
-        this.id = id;
+    public CreatorNode(UUID creatorId, String name) {
+        this.creatorId = creatorId;
         this.name = name;
     }
 
-    public UUID getId() {
-        return id;
+    public UUID getCreatorId() {
+        return creatorId;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public void setCreatorId(UUID creatorId) {
+        this.creatorId = creatorId;
     }
 
     public String getName() {
@@ -52,12 +52,12 @@ public class CreatorNode {
         if (o == null || getClass() != o.getClass())
             return false;
         CreatorNode that = (CreatorNode) o;
-        return Objects.equals(id, that.id);
+        return Objects.equals(creatorId, that.creatorId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(id);
+        return Objects.hashCode(creatorId);
     }
 
 }

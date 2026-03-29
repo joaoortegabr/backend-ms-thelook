@@ -1,9 +1,8 @@
 package com.thelook.ms_social.services;
 
-import com.thelook.security.UserContext;
 import com.thelook.exceptions.BusinessRuleException;
-import com.thelook.exceptions.IncompleteProfileException;
 import com.thelook.ms_social.repositories.CreatorNodeRepository;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -12,9 +11,12 @@ import java.util.UUID;
 public class SocialService {
 
     private final CreatorNodeRepository creatorNodeRepository;
+    private final StringRedisTemplate redisTemplate;
 
-    public SocialService(CreatorNodeRepository creatorNodeRepository) {
+    public SocialService(CreatorNodeRepository creatorNodeRepository,
+                         StringRedisTemplate redisTemplate) {
         this.creatorNodeRepository = creatorNodeRepository;
+        this.redisTemplate = redisTemplate;
     }
 
     public void follow(UUID creatorId, UUID targetId) {
@@ -26,6 +28,7 @@ public class SocialService {
             return;
 
         creatorNodeRepository.follow(creatorId, targetId);
+        redisTemplate.opsForValue().increment("followers:count:" + creatorId);
     }
 
     public void unfollow(UUID creatorId, UUID targetId) {
@@ -34,6 +37,7 @@ public class SocialService {
             return;
 
         creatorNodeRepository.unfollow(creatorId, targetId);
+        redisTemplate.opsForValue().decrement("followers:count:" + creatorId);
     }
 
 }

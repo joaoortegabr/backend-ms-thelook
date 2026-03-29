@@ -11,6 +11,7 @@ public record CreatorResponse(
         String instagram,
         LocalDate birthDate,
         String city,
-        String uf
+        String uf,
+        long followersCount
     ) {
 }

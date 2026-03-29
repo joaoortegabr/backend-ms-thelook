@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/social/creator")
+@RequestMapping("/api/v1/social")
 public class SocialController {
 
     private final SocialService socialService;
@@ -17,7 +17,7 @@ public class SocialController {
         this.socialService = socialService;
     }
 
-    @PostMapping("/follow/{targetId}")
+    @PatchMapping("/follow/{targetId}")
     public ResponseEntity<Void> follow(
             @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
             @PathVariable UUID targetId) {
@@ -29,7 +29,7 @@ public class SocialController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/unfollow/{targetId}")
+    @PatchMapping("/unfollow/{targetId}")
     public ResponseEntity<Void> unfollow(
             @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
             @PathVariable UUID targetId) {

@@ -45,7 +45,7 @@ public class CreatorController {
         return ResponseEntity.created(uri).body(createdCreator);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping
     public ResponseEntity<CreatorResponse> update(
             @RequestHeader(name="X-Creator-Id") UUID creatorId,
             @RequestBody CreatorUpdateRequest request) {
@@ -53,7 +53,7 @@ public class CreatorController {
         return ResponseEntity.ok().body(updatedCreator);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping
     public ResponseEntity<Map<String,String>> delete(
             @RequestHeader(name="X-Creator-Id") UUID creatorId) {
 

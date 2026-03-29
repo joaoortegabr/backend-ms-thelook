@@ -2,6 +2,7 @@ package com.thelook.ms_social.repositories;
 
 import com.thelook.ms_social.entities.Creator;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -17,5 +18,8 @@ public interface CreatorRepository extends JpaRepository<Creator, UUID> {
     @Query("SELECT c FROM Creator c WHERE c.id = :creatorId")
     Optional<Creator> findIdByCreatorId(UUID creatorId);
 
+    @Modifying
+    @Query("UPDATE Creator c SET c.followersCount = :count WHERE c.id = :creatorId")
+    void updateFollowerCount(UUID creatorId, long count);
 
 }

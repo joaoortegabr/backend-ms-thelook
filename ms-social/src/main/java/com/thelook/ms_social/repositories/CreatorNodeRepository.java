@@ -1,6 +1,7 @@
 package com.thelook.ms_social.repositories;
 
 import com.thelook.ms_social.entities.CreatorNode;
+import com.thelook.ms_social.models.dtos.CreatorFollowerCount;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
@@ -11,28 +12,25 @@ import java.util.UUID;
 @Repository
 public interface CreatorNodeRepository extends Neo4jRepository<CreatorNode, UUID> {
 
-    @Query("RETURN EXISTS((:Creator {id: $followerId})-[:FOLLOWS]->(:Creator {id: $followedId}))")
+    @Query("RETURN EXISTS((:Creator {creatorId: $followerId})-[:FOLLOWS]->(:Creator {creatorId: $followedId}))")
     boolean isFollowing(UUID followerId, UUID followedId);
 
-    @Query("MATCH (follower:Creator {id: $followerId}), (followed:Creator {id: $followedId}) " +
+    @Query("MATCH (follower:Creator {creatorId: $followerId}) " +
+            "MATCH (followed:Creator {creatorId: $followedId}) " +
             "MERGE (follower)-[:FOLLOWS]->(followed)")
     void follow(UUID followerId, UUID followedId);
 
-    @Query("MATCH (follower:Creator {id: $followerId})-[r:FOLLOWS]->(followed:Creator {id: $followedId}) " +
+    @Query("MATCH (follower:Creator {creatorId: $followerId})-[r:FOLLOWS]->(followed:Creator {creatorId: $followedId}) " +
             "DELETE r")
     void unfollow(UUID followerId, UUID followedId);
 
-    @Query("MATCH (me:Creator {id: $id})-[:FOLLOWS]->(friend)-[:FOLLOWS]->(suggested) " +
-            "WHERE NOT (me)-[:FOLLOWS]->(suggested) AND me <> suggested " +
-            "RETURN suggested")
-    List<CreatorNode> findSuggestions(UUID id);
+    @Query("MATCH (c:Creator)<-[:FOLLOWS]-(follower) " +
+            "RETURN c.creatorId as creatorId, count(follower) as total")
+    List<CreatorFollowerCount> countFollowersPerCreator();
 
-    @Query("MATCH (c:Creator {id: $id}) DETACH DELETE c")
-    void detachDeleteById(UUID id);
-
-    @Query("MATCH (c:Creator {id: $id}) " +
+    @Query("MATCH (c:Creator {creatorId: $creatorId}) " +
             "OPTIONAL MATCH (c)-[:POSTED]->(p:Photo) " +
             "OPTIONAL MATCH ()-[l:LIKES]->(p) " +
             "DETACH DELETE c, p, l")
-    void deepDeleteCreator(UUID id);
+    void deepDeleteCreator(UUID creatorId);
 }
