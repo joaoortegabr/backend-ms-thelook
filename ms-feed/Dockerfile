@@ -1,32 +1,33 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+# Estágio 1: Build das Dependências Comuns
+FROM maven:3.9.9-eclipse-temurin-21 AS base-build
+WORKDIR /libs
 
-# Set the working directory
+# Copia e instala as libs locais primeiro (Camada de Cache)
+# Isso só rodará novamente se os arquivos nas pastas libs mudarem
+COPY libs/common-exception ./common-exception
+RUN mvn -f ./common-exception/pom.xml clean install -DskipTests
+
+COPY libs/common ./common
+RUN mvn -f ./common/pom.xml clean install -DskipTests
+
+# Estágio 2: Build do Microsserviço
+FROM base-build AS app-build
 WORKDIR /app
 
-# Copia as libs
-COPY libs/common-exception /libs/common-exception
-RUN mvn -f /libs/common-exception/pom.xml clean install -DskipTests
-
-COPY libs/common-security /libs/common-security
-RUN mvn -f /libs/common-security/pom.xml clean install -DskipTests
-
-# Copy the pom.xml file
+# Copia apenas o pom.xml primeiro para baixar as dependências do Maven Central
+# Isso evita baixar a internet toda vez que você mudar uma linha de código Java
 COPY ms-feed/pom.xml .
+RUN mvn dependency:resolve-plugins dependency:resolve -B
 
-# Copy the source code
+# Agora copia o código fonte e gera o jar
 COPY ms-feed/src ./src
+RUN mvn clean package -DskipTests -B
 
-# Build the application
-RUN mvn clean package -DskipTests
-
-# Stage 2: Run the application
+# Estágio 3: Runtime (Final)
 FROM eclipse-temurin:21-jre-jammy
-
-# Set the working directory
 WORKDIR /app
 
-# Copy the built jar file from the build stage (the name comes from pom.xml)
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=app-build /app/target/*.jar app.jar
 
-# Command to run the application
-ENTRYPOINT ["java","-jar","app.jar"]
+# Configurações para rodar com Java 21 e Virtual Threads de forma otimizada
+ENTRYPOINT ["java", "-XX:+UseZGC", "-XX:+ZGenerational", "-jar", "app.jar"]

@@ -1,12 +1,13 @@
 package com.thelook.ms_creation.entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.thelook.enums.ImageProcessStatus;
 import com.thelook.ms_creation.models.enums.ItemType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -31,8 +32,11 @@ public class Item {
     private String itemImg;
     @Column(nullable = false)
     private String itemUrl;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    @Enumerated(EnumType.STRING)
+    private ImageProcessStatus imageStatus;
     @CreationTimestamp
-    private LocalDate createdAt;
+    private LocalDateTime createdAt;
 
     public Item() {
     }
@@ -43,6 +47,7 @@ public class Item {
         this.itemName = itemName;
         this.itemImg = itemImg;
         this.itemUrl = itemUrl;
+        this.imageStatus = ImageProcessStatus.PENDING;
     }
 
     public UUID getId() {
@@ -93,7 +98,15 @@ public class Item {
         this.itemUrl = itemUrl;
     }
 
-    public LocalDate getCreatedAt() {
+    public ImageProcessStatus getImageStatus() {
+        return imageStatus;
+    }
+
+    public void setImageStatus(ImageProcessStatus imageStatus) {
+        this.imageStatus = imageStatus;
+    }
+
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 

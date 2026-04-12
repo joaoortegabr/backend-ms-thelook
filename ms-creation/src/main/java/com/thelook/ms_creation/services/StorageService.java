@@ -1,6 +1,8 @@
 package com.thelook.ms_creation.services;
 
+import com.thelook.exceptions.StorageException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -9,26 +11,27 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 public class StorageService {
 
-    private final String ROOT_DIR = "uploads/outfits/";
+    private final Path root = Paths.get("uploads/outfits");
 
-    public String save(MultipartFile file, String creatorId, String outfitId) {
-
+    public String saveImage(MultipartFile file, UUID creatorId, UUID outfitId, String fileName) {
         try {
-            // Cria o caminho: uploads/outfits/creatorId/outfitId/
-            Path path = Paths.get(ROOT_DIR, creatorId, outfitId);
-            Files.createDirectories(path);
+            // uploads/outfits/{creatorId}/{outfitId}/{fileName}.ext
+            Path directory = root.resolve(creatorId.toString()).resolve(outfitId.toString());
+            Files.createDirectories(directory);
 
-            // Define o nome do arquivo e salva
-            Path filePath = path.resolve(Objects.requireNonNull(file.getOriginalFilename()));
+            String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
+            Path filePath = directory.resolve(fileName + "." + extension);
+
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
             return filePath.toString();
         } catch (IOException e) {
-            throw new RuntimeException("Erro ao salvar arquivo: " + e.getMessage());
+            throw new StorageException("Failed to store file", e);
         }
     }
 

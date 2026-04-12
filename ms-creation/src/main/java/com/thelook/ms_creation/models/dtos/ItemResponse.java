@@ -4,7 +4,7 @@ import com.thelook.enums.ImageProcessStatus;
 import com.thelook.ms_creation.entities.Outfit;
 import com.thelook.ms_creation.models.enums.ItemType;
 
-public record ItemRequest(
+public record ItemResponse(
         Outfit outfit,
         ItemType itemType,
         String itemName,

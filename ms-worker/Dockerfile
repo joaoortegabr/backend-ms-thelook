@@ -16,16 +16,20 @@ WORKDIR /app
 
 # Copia apenas o pom.xml primeiro para baixar as dependências do Maven Central
 # Isso evita baixar a internet toda vez que você mudar uma linha de código Java
-COPY ms-social/pom.xml .
+COPY ms-worker/pom.xml .
 RUN mvn dependency:resolve-plugins dependency:resolve -B
 
 # Agora copia o código fonte e gera o jar
-COPY ms-social/src ./src
+COPY ms-worker/src ./src
 RUN mvn clean package -DskipTests -B
 
 # Estágio 3: Runtime (Final)
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
+
+# Instala bibliotecas nativas (essencial para o ms-worker processar imagens)
+# Se este for o Dockerfile do ms-worker, mantenha a linha abaixo:
+RUN apt-get update && apt-get install -y libvips-dev && rm -rf /var/lib/apt/lists/*
 
 COPY --from=app-build /app/target/*.jar app.jar
 

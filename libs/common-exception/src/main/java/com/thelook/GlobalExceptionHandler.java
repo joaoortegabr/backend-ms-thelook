@@ -3,6 +3,7 @@ package com.thelook;
 import com.thelook.exceptions.BusinessRuleException;
 import com.thelook.exceptions.IncompleteProfileException;
 import com.thelook.exceptions.ResourceNotFoundException;
+import com.thelook.exceptions.StorageException;
 import com.thelook.exceptions.StandardError;
 import com.thelook.exceptions.UnprocessableRequestException;
 
@@ -74,6 +75,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<StandardError> handleJsonParseError(HttpMessageNotReadableException e, HttpServletRequest request) {
         String error = "Error processing request (invalid JSON)";
         HttpStatus status = HttpStatus.BAD_REQUEST;
+        StandardError err = new StandardError(Instant.now(), status.value(), error, e.getMostSpecificCause().getMessage(), request.getRequestURI());
+        return ResponseEntity.status(status).body(err);
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<StandardError> handleStorageError(StorageException e, HttpServletRequest request) {
+        String error = "Error storing image";
+        HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
         StandardError err = new StandardError(Instant.now(), status.value(), error, e.getMostSpecificCause().getMessage(), request.getRequestURI());
         return ResponseEntity.status(status).body(err);
     }

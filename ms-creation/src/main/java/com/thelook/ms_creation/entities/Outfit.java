@@ -1,13 +1,15 @@
 package com.thelook.ms_creation.entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.thelook.enums.ImageProcessStatus;
 import com.thelook.ms_creation.models.enums.OutfitColor;
 import com.thelook.ms_creation.models.enums.OutfitStyle;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
@@ -15,7 +17,6 @@ import java.util.*;
 public class Outfit {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     @Column(name="creator_id", nullable = false)
@@ -37,8 +38,11 @@ public class Outfit {
     @OneToMany(mappedBy = "outfit", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @JsonManagedReference
     private List<Item> items = new ArrayList<>();
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    @Enumerated(EnumType.STRING)
+    private ImageProcessStatus imageStatus;
     @CreationTimestamp
-    private LocalDate createdAt;
+    private LocalDateTime createdAt;
 
     public Outfit() {
     }
@@ -52,6 +56,7 @@ public class Outfit {
         this.style = style;
         this.colors = colors;
         this.items = items;
+        this.imageStatus = ImageProcessStatus.PENDING;
     }
 
     public void addItem(Item item) {
@@ -123,7 +128,15 @@ public class Outfit {
         this.items = items;
     }
 
-    public LocalDate getCreatedAt() {
+    public ImageProcessStatus getImageStatus() {
+        return imageStatus;
+    }
+
+    public void setImageStatus(ImageProcessStatus imageStatus) {
+        this.imageStatus = imageStatus;
+    }
+
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 

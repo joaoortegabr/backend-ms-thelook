@@ -1,0 +1,14 @@
+{
+  "analysis": {
+    "analyzer": {
+      "portuguese": {
+        "tokenizer": "standard",
+        "filter": ["lowercase", "portuguese_stop", "portuguese_stemmer"]
+      }
+    },
+    "filter": {
+      "portuguese_stop": { "type": "stop", "stopwords": "_portuguese_" },
+      "portuguese_stemmer": { "type": "stemmer", "language": "light_portuguese" }
+    }
+  }
+}
