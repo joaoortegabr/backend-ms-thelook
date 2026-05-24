@@ -4,12 +4,10 @@ import com.thelook.exceptions.IncompleteProfileException;
 import com.thelook.ms_creation.entities.Outfit;
 import com.thelook.ms_creation.models.dtos.OutfitRequest;
 import com.thelook.ms_creation.models.dtos.OutfitResponse;
-import com.thelook.ms_creation.models.mappers.ItemMapper;
 import com.thelook.ms_creation.models.mappers.OutfitMapper;
 import com.thelook.ms_creation.services.OutfitService;
 import com.thelook.ms_creation.services.StorageService;
 import jakarta.validation.Valid;
-import org.mapstruct.factory.Mappers;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,15 +22,15 @@ import java.util.UUID;
 @RequestMapping("/api/v1/creation")
 public class OutfitController {
 
-    OutfitMapper outfitMapper = Mappers.getMapper(OutfitMapper.class);
-    ItemMapper itemMapper = Mappers.getMapper(ItemMapper.class);
-
     private final OutfitService outfitService;
     private final StorageService storageService;
+    private final OutfitMapper outfitMapper;
 
-    public OutfitController(OutfitService outfitService, StorageService storageService) {
+    public OutfitController(OutfitService outfitService, StorageService storageService,
+                            OutfitMapper outfitMapper) {
         this.outfitService = outfitService;
         this.storageService = storageService;
+        this.outfitMapper = outfitMapper;
     }
 
     @GetMapping(value = "/{outfitId}")

@@ -15,7 +15,6 @@ import com.thelook.ms_creation.models.mappers.OutfitMapper;
 import com.thelook.ms_creation.repositories.OutboxRepository;
 import com.thelook.ms_creation.repositories.OutfitRepository;
 import jakarta.transaction.Transactional;
-import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,19 +24,20 @@ import java.util.UUID;
 @Service
 public class OutfitService {
 
-    OutfitMapper outfitMapper = Mappers.getMapper(OutfitMapper.class);
-
     private final OutfitRepository outfitRepository;
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
     private final StorageService storageService;
+    private final OutfitMapper outfitMapper;
 
     public OutfitService(OutfitRepository outfitRepository, OutboxRepository outboxRepository,
-                         ObjectMapper objectMapper, StorageService storageService) {
+                         ObjectMapper objectMapper, StorageService storageService,
+                         OutfitMapper outfitMapper) {
         this.outfitRepository = outfitRepository;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
         this.storageService = storageService;
+        this.outfitMapper = outfitMapper;
     }
 
     public Outfit findById(UUID outfitId) {
@@ -98,7 +98,7 @@ public class OutfitService {
             message.setType("OUTFIT_CREATED");
             message.setPayload(objectMapper.writeValueAsString(syncDto));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Erro ao processar JSON", e);
+            throw new BusinessRuleException("Erro ao serializar evento do outfit: " + e.getMessage());
         }
 
         outboxRepository.save(message);

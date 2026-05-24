@@ -1,15 +1,15 @@
 package com.thelook.ms_creation.models.dtos;
 
 import com.thelook.enums.ImageProcessStatus;
-import com.thelook.ms_creation.entities.Outfit;
 import com.thelook.ms_creation.models.enums.ItemType;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public record ItemRequest(
-        Outfit outfit,
-        ItemType itemType,
-        String itemName,
+        @NotNull ItemType itemType,
+        @NotBlank String itemName,
         String itemImg,
-        String itemUrl,
+        @NotBlank String itemUrl,
         ImageProcessStatus imageStatus
     ) {
 

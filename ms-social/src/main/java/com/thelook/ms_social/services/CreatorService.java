@@ -65,7 +65,7 @@ public class CreatorService {
                 creator.getId().toString(),
                 Duration.ofDays(CACHE_DURATION_DAYS)
         );
-        log.info("/////New Creator registered={},{},{}/{}",
+        log.info("Novo Creator registrado: nome={}, instagram={}, cidade={}/{}",
                 request.name(), request.instagram(), request.city(), request.uf());
         return creator;
     }
@@ -98,8 +98,10 @@ public class CreatorService {
     @Transactional(transactionManager = "transactionManager")
     public String delete(UUID creatorId) {
         try {
+            Creator creator = findById(creatorId);
             creatorRepository.deleteById(creatorId);
             deleteCreatorFromNeo4j(creatorId);
+            redisTemplate.delete("user:profile:" + creator.getUserId());
             return "Registro removido com sucesso.";
         } catch(Exception e) {
             throw new ResourceNotFoundException("Error deleting register: " + e.getMessage());

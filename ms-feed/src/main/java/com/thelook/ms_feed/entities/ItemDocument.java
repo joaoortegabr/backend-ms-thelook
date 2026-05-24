@@ -6,7 +6,6 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.util.Objects;
 
-@Document(indexName="items")
 public class ItemDocument {
 
     @Field(type = FieldType.Keyword)

@@ -1,10 +1,10 @@
 package com.thelook.ms_auth.models.dtos;
 
-import com.thelook.ms_auth.models.enums.UserRole;
+import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest(
-        String username,
-        String password
+        @NotBlank String username,
+        @NotBlank String password
     ) {
 
 }

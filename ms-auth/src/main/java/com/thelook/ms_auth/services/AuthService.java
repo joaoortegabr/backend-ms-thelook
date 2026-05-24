@@ -7,6 +7,7 @@ import com.thelook.exceptions.UnprocessableRequestException;
 import com.thelook.ms_auth.entities.User;
 import com.thelook.ms_auth.models.dtos.LoginRequest;
 import com.thelook.ms_auth.models.dtos.LoginResponse;
+import com.thelook.ms_auth.models.dtos.RefreshResponse;
 import com.thelook.ms_auth.models.dtos.RegisterRequest;
 import com.thelook.ms_auth.models.dtos.RegisterResponse;
 import com.thelook.ms_auth.models.enums.UserRole;
@@ -16,11 +17,16 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.TimeUnit;
+
 @Service
 public class AuthService {
 
     @Value("${jwt-token.expiration}")
     private long EXPIRATION_TIME;
+
+    @Value("${jwt-token.refresh-expiration}")
+    private long REFRESH_EXPIRATION_TIME;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -63,14 +69,32 @@ public class AuthService {
         String creatorId = redisTemplate.opsForValue().get(redisKey);
 
         String token = jwtService.generateToken(user, creatorId);
+        String refreshToken = jwtService.generateRefreshToken(user);
 
-        return new LoginResponse(token, "Bearer", EXPIRATION_TIME);
+        return new LoginResponse(token, refreshToken, "Bearer", EXPIRATION_TIME, REFRESH_EXPIRATION_TIME);
     }
 
-    public LoginResponse refresh(String refreshToken) {
+    public void logout(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new UnprocessableRequestException("Invalid authorization header");
+        }
 
-        if (!jwtService.isTokenValid(refreshToken)) {
-            throw new InvalidAccessTokenException("Refresh access token is invalid or expired");
+        String token = authHeader.substring(7);
+
+        if (!jwtService.isTokenValid(token)) {
+            throw new InvalidAccessTokenException("Token is invalid or already expired");
+        }
+
+        long ttl = jwtService.extractExpiration(token).getTime() - System.currentTimeMillis();
+        if (ttl > 0) {
+            redisTemplate.opsForValue().set("auth:blocklist:" + token, "1", ttl, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    public RefreshResponse refresh(String refreshToken) {
+
+        if (!jwtService.isTokenValid(refreshToken) || !jwtService.isRefreshToken(refreshToken)) {
+            throw new InvalidAccessTokenException("Refresh token is invalid or expired");
         }
 
         String username = jwtService.extractUsername(refreshToken);
@@ -81,7 +105,7 @@ public class AuthService {
 
         String newToken = jwtService.generateToken(user, creatorId);
 
-        return new LoginResponse(newToken, "Bearer", EXPIRATION_TIME);
+        return new RefreshResponse(newToken, "Bearer", EXPIRATION_TIME);
     }
 
 }

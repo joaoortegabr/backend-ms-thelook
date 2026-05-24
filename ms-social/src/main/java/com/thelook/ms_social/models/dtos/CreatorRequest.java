@@ -1,15 +1,17 @@
 package com.thelook.ms_social.models.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDate;
-import java.util.UUID;
 
 public record CreatorRequest(
-        String name,
+        @NotBlank String name,
         String avatarUrl,
         String bio,
-        String instagram,
+        @NotBlank String instagram,
         LocalDate birthDate,
         String city,
-        String uf
+        @Size(min = 2, max = 2) String uf
     ) {
 }

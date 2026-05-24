@@ -17,7 +17,7 @@ public record OutfitResponse(
         OutfitStyle style,
         Set<OutfitColor> colors,
         ImageProcessStatus imageStatus,
-        List<ItemRequest> items
+        List<ItemResponse> items
     ) {
 
 }

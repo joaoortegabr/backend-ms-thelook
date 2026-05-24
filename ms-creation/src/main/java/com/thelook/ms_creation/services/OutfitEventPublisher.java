@@ -5,7 +5,6 @@ import com.thelook.ms_creation.config.RabbitMQConfig;
 import com.thelook.ms_creation.entities.Item;
 import com.thelook.ms_creation.entities.Outfit;
 import com.thelook.ms_creation.models.mappers.OutfitMapper;
-import org.mapstruct.factory.Mappers;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -15,13 +14,13 @@ import java.util.Map;
 @Service
 public class OutfitEventPublisher {
 
-    OutfitMapper outfitMapper = Mappers.getMapper(OutfitMapper.class);
-
     private final RabbitTemplate rabbitTemplate;
+    private final OutfitMapper outfitMapper;
     private final String EXCHANGE = RabbitMQConfig.OUTFIT_EXCHANGE;
 
-    public OutfitEventPublisher(RabbitTemplate rabbitTemplate) {
+    public OutfitEventPublisher(RabbitTemplate rabbitTemplate, OutfitMapper outfitMapper) {
         this.rabbitTemplate = rabbitTemplate;
+        this.outfitMapper = outfitMapper;
     }
 
     public void publishOutfitCreated(Outfit outfit) {

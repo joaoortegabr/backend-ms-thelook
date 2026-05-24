@@ -34,7 +34,7 @@ public class OutboxRelay {
                 message.setProcessed(true);
                 outboxRepository.save(message);
             } catch (Exception e) {
-                log.error("Falha ao enviar mensagem do Outbox: " + message.getId());
+                log.error("Falha ao enviar mensagem do Outbox {}: {}", message.getId(), e.getMessage(), e);
             }
         }
     }

@@ -2,6 +2,8 @@ package com.thelook.api_gateway.filters;
 
 import com.thelook.api_gateway.security.JwtService;
 import com.thelook.exceptions.UnauthorizedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -17,6 +19,8 @@ import reactor.core.publisher.Mono;
 public class JwtAuthenticationFilterGatewayFilterFactory
         extends AbstractGatewayFilterFactory<JwtAuthenticationFilterGatewayFilterFactory.Config>
         implements Ordered {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilterGatewayFilterFactory.class);
 
     private final JwtService jwtService;
     private final ReactiveRedisOperations<String, String> redisOps;
@@ -55,18 +59,25 @@ public class JwtAuthenticationFilterGatewayFilterFactory
                 String role = jwtService.extractRole(token);
                 String creatorIdFromJwt = jwtService.extractCreatorId(token);
 
-                if (creatorIdFromJwt != null) {
-                    return proceedWithHeaders(exchange, chain::filter, userId, username, role, creatorIdFromJwt);
-                }
+                return redisOps.hasKey("auth:blocklist:" + token)
+                        .flatMap(isBlocked -> {
+                            if (Boolean.TRUE.equals(isBlocked)) {
+                                return Mono.error(new UnauthorizedException("Token inválido ou expirado"));
+                            }
 
-                return redisOps.opsForValue().get("user:profile:" + userId)
-                        .flatMap(creatorIdFromRedis ->
-                                proceedWithHeaders(exchange, chain::filter, userId, username, role, creatorIdFromRedis))
-                        .switchIfEmpty(Mono.defer(() ->
-                                proceedWithHeaders(exchange, chain::filter, userId, username, role, null)));
+                            if (creatorIdFromJwt != null) {
+                                return proceedWithHeaders(exchange, chain::filter, userId, username, role, creatorIdFromJwt);
+                            }
+
+                            return redisOps.opsForValue().get("user:profile:" + userId)
+                                    .flatMap(creatorIdFromRedis ->
+                                            proceedWithHeaders(exchange, chain::filter, userId, username, role, creatorIdFromRedis))
+                                    .switchIfEmpty(Mono.defer(() ->
+                                            proceedWithHeaders(exchange, chain::filter, userId, username, role, null)));
+                        });
 
             } catch (Exception e) {
-                System.out.println(">>>>>>Erro ao validar token===" + e.getMessage());
+                log.warn("Token validation failed: {}", e.getMessage());
                 return Mono.error(new UnauthorizedException("Token inválido ou expirado"));
             }
         };

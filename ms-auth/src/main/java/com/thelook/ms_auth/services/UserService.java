@@ -30,7 +30,6 @@ public class UserService {
         return new UserResponse(
                 savedUser.getId(),
                 savedUser.getUsername(),
-                savedUser.getPassword(),
                 savedUser.getRole());
     }
 }

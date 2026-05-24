@@ -1,23 +1,21 @@
 package com.thelook.ms_creation.models.dtos;
 
-import com.thelook.enums.ImageProcessStatus;
-import com.thelook.ms_creation.models.dtos.ItemRequest;
 import com.thelook.ms_creation.models.enums.OutfitColor;
 import com.thelook.ms_creation.models.enums.OutfitStyle;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 public record OutfitRequest(
-        UUID creatorId,
-        String title,
-        String image1Url,
-        String image2Url,
-        OutfitStyle style,
-        Set<OutfitColor> colors,
-        ImageProcessStatus imageStatus,
-        List<ItemRequest> items
+        @NotBlank String title,
+        @NotNull OutfitStyle style,
+        @NotEmpty Set<OutfitColor> colors,
+        @Valid @Size(max = 6) List<ItemRequest> items
     ) {
 
 }

@@ -5,7 +5,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,11 +21,15 @@ public class JwtService {
     @Value("${jwt-token.expiration}")
     private long EXPIRATION_TIME;
 
+    @Value("${jwt-token.refresh-expiration}")
+    private long REFRESH_EXPIRATION_TIME;
+
     public String generateToken(User user, String creatorId) {
         var builder = Jwts.builder()
                 .subject(user.getUsername())
                 .claim("userId", user.getId().toString())
                 .claim("role", user.getRole().name())
+                .claim("tokenType", "access")
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME));
 
@@ -34,7 +37,17 @@ public class JwtService {
             builder.claim("creatorId", creatorId);
         }
 
-        return builder.signWith(secretKey())
+        return builder.signWith(secretKey()).compact();
+    }
+
+    public String generateRefreshToken(User user) {
+        return Jwts.builder()
+                .subject(user.getUsername())
+                .claim("userId", user.getId().toString())
+                .claim("tokenType", "refresh")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION_TIME))
+                .signWith(secretKey())
                 .compact();
     }
 
@@ -48,6 +61,18 @@ public class JwtService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public boolean isRefreshToken(String token) {
+        return "refresh".equals(extractClaim(token, claims -> claims.get("tokenType", String.class)));
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    public long getRefreshExpirationTime() {
+        return REFRESH_EXPIRATION_TIME;
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

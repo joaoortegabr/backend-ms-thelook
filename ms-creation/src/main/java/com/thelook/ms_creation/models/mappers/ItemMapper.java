@@ -11,10 +11,13 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel="spring")
 public interface ItemMapper {
 
-    @Mapping(target="id", ignore=true)
-    @Mapping(target="createdAt", ignore=true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "outfit", ignore = true)
+    @Mapping(target = "imageStatus", ignore = true)
     Item toItem(ItemRequest itemRequest);
 
+    @Mapping(source = "id", target = "itemId")
     ItemResponse toItemResponse(Item item);
 
     @Mapping(source="id", target="itemId")
