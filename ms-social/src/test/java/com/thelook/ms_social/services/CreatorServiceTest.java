@@ -6,6 +6,7 @@ import com.thelook.ms_social.entities.Creator;
 import com.thelook.ms_social.models.dtos.CreatorRequest;
 import com.thelook.ms_social.models.dtos.CreatorUpdateRequest;
 import com.thelook.ms_social.repositories.CreatorRepository;
+import com.thelook.ms_social.services.CreatorEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,7 @@ import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +36,7 @@ class CreatorServiceTest {
     @Mock private CreatorRepository creatorRepository;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
+    @Mock private CreatorEventPublisher creatorEventPublisher;
 
     @InjectMocks private CreatorService creatorService;
 
@@ -181,7 +184,7 @@ class CreatorServiceTest {
     // =========================================================
 
     @Test
-    void delete_success_deletesFromAllStoresAndReturnsMessage() {
+    void delete_success_softDeleteERetornaMensagem() {
         UUID creatorId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Creator existing = creator(creatorId, userId);
@@ -190,10 +193,15 @@ class CreatorServiceTest {
 
         String result = creatorService.delete(creatorId);
 
-        verify(creatorRepository).deleteById(creatorId);
-        verify(creatorNodeService).delete(creatorId);
+        assertThat(existing.getIsActive()).isFalse();
+        assertThat(existing.getDeletedAt()).isNotNull();
+        verify(creatorRepository).save(existing);
+        verify(creatorRepository, never()).deleteById(any());
         verify(redisTemplate).delete("user:profile:" + userId);
-        assertThat(result).isEqualTo("Registro removido com sucesso.");
+        verify(redisTemplate).delete("followers:count:" + creatorId);
+        verify(creatorNodeService).delete(creatorId);
+        verify(creatorEventPublisher).publishDeactivated(creatorId);
+        assertThat(result).contains("desativada");
     }
 
     @Test
@@ -205,5 +213,69 @@ class CreatorServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(creatorRepository, never()).deleteById(any());
+        verify(creatorRepository, never()).save(any());
+    }
+
+    // =========================================================
+    // reactivate
+    // =========================================================
+
+    @Test
+    void reactivate_contaInativa_reativaERetornaCreator() {
+        UUID userId = UUID.randomUUID();
+        Creator existing = creator(UUID.randomUUID(), userId);
+        existing.setIsActive(false);
+        existing.setDeletedAt(LocalDateTime.now().minusDays(30));
+
+        when(creatorRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+        when(creatorRepository.save(any())).thenReturn(existing);
+
+        Creator result = creatorService.reactivate(userId);
+
+        assertThat(result.getIsActive()).isTrue();
+        assertThat(result.getDeletedAt()).isNull();
+        verify(creatorNodeService).save(existing);
+        verify(valueOps).set(eq("user:profile:" + userId), anyString(), eq(Duration.ofDays(90)));
+        verify(creatorEventPublisher).publishReactivated(existing.getId());
+    }
+
+    @Test
+    void reactivate_creatorNaoEncontrado_throwsResourceNotFoundException() {
+        UUID userId = UUID.randomUUID();
+        when(creatorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> creatorService.reactivate(userId))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(creatorRepository, never()).save(any());
+    }
+
+    @Test
+    void reactivate_contaJaAtiva_throwsBusinessRuleException() {
+        UUID userId = UUID.randomUUID();
+        Creator existing = creator(UUID.randomUUID(), userId);
+        existing.setIsActive(true);
+        when(creatorRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> creatorService.reactivate(userId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("ativa");
+
+        verify(creatorRepository, never()).save(any());
+    }
+
+    @Test
+    void reactivate_prazoExpirado_throwsBusinessRuleException() {
+        UUID userId = UUID.randomUUID();
+        Creator existing = creator(UUID.randomUUID(), userId);
+        existing.setIsActive(false);
+        existing.setDeletedAt(LocalDateTime.now().minusDays(91));
+        when(creatorRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> creatorService.reactivate(userId))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("expirado");
+
+        verify(creatorRepository, never()).save(any());
     }
 }

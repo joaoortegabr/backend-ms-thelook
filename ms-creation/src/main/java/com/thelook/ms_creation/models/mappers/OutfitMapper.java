@@ -20,10 +20,6 @@ public interface OutfitMapper {
     Outfit toOutfit(OutfitRequest outfitRequest);
 
     @Mapping(source = "id", target = "outfitId")
-    @Mapping(target = "creatorId", ignore = true)
-    @Mapping(target = "image1Url", ignore = true)
-    @Mapping(target = "image2Url", ignore = true)
-    @Mapping(target = "imageStatus", ignore = true)
     OutfitResponse toOutfitResponse(Outfit outfit);
 
     @Mapping(source = "id", target = "outfitId")

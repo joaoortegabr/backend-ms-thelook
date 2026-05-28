@@ -1,102 +1,98 @@
 package com.thelook.ms_creation.services;
 
-import com.thelook.exceptions.StorageException;
+import com.thelook.exceptions.UnprocessableRequestException;
+import com.thelook.ms_creation.storage.StorageProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedStatic;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StorageServiceTest {
 
+    @Mock StorageProvider storageProvider;
+
     StorageService storageService;
+
+    // JPEG magic bytes: FF D8 FF
+    private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x00};
 
     @BeforeEach
     void setUp() {
-        storageService = new StorageService();
+        storageService = new StorageService(storageProvider);
+    }
+
+    // ── saveImage ──────────────────────────────────────────────────────────────
+
+    @Test
+    void saveImage_imagemJpegValida_delegaParaProviderERetornaCaminho() {
+        UUID creatorId = UUID.randomUUID();
+        UUID outfitId = UUID.randomUUID();
+        MockMultipartFile file = new MockMultipartFile("img", "photo.jpg", "image/jpeg", JPEG_BYTES);
+        when(storageProvider.save(file, creatorId, outfitId, "main_look_1")).thenReturn("path/image.jpg");
+
+        String result = storageService.saveImage(file, creatorId, outfitId, "main_look_1");
+
+        assertThat(result).isEqualTo("path/image.jpg");
+        verify(storageProvider).save(file, creatorId, outfitId, "main_look_1");
     }
 
     @Test
-    void saveImage_retornaPathComCreatorIdOutfitIdEFileName() {
+    void saveImage_formatoInvalido_lancaUnprocessableRequestExceptionSemChamarProvider() {
         UUID creatorId = UUID.randomUUID();
         UUID outfitId = UUID.randomUUID();
-        MockMultipartFile file = new MockMultipartFile("img", "photo.jpg", "image/jpeg", new byte[]{1, 2, 3});
+        MockMultipartFile file = new MockMultipartFile("img", "photo.bmp", "image/bmp",
+                new byte[]{0x42, 0x4D, 0x00, 0x00, 0x00});
 
-        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
-            mockedFiles.when(() -> Files.createDirectories(any(Path.class))).thenReturn(null);
-            mockedFiles.when(() -> Files.copy(any(InputStream.class), any(Path.class), any())).thenReturn(3L);
+        assertThatThrownBy(() -> storageService.saveImage(file, creatorId, outfitId, "main_look_1"))
+                .isInstanceOf(UnprocessableRequestException.class)
+                .hasMessageContaining("Invalid image format");
 
-            String path = storageService.saveImage(file, creatorId, outfitId, "main_look_1");
-
-            assertThat(path).contains(creatorId.toString());
-            assertThat(path).contains(outfitId.toString());
-            assertThat(path).contains("main_look_1");
-            assertThat(path).endsWith(".jpg");
-        }
+        verifyNoInteractions(storageProvider);
     }
 
     @Test
-    void saveImage_extensaoPreservadaNoNomeDoArquivo() {
+    void saveImage_arquivoVazio_lancaUnprocessableRequestExceptionSemChamarProvider() {
         UUID creatorId = UUID.randomUUID();
         UUID outfitId = UUID.randomUUID();
-        MockMultipartFile file = new MockMultipartFile("img", "photo.png", "image/png", new byte[]{1});
+        MockMultipartFile file = new MockMultipartFile("img", "photo.jpg", "image/jpeg", new byte[0]);
 
-        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
-            mockedFiles.when(() -> Files.createDirectories(any(Path.class))).thenReturn(null);
-            mockedFiles.when(() -> Files.copy(any(InputStream.class), any(Path.class), any())).thenReturn(1L);
+        assertThatThrownBy(() -> storageService.saveImage(file, creatorId, outfitId, "main_look_1"))
+                .isInstanceOf(UnprocessableRequestException.class);
 
-            String path = storageService.saveImage(file, creatorId, outfitId, "item_0");
+        verifyNoInteractions(storageProvider);
+    }
 
-            assertThat(path).endsWith(".png");
-        }
+    // ── deleteImage ────────────────────────────────────────────────────────────
+
+    @Test
+    void deleteImage_caminhoValido_delegaParaProvider() {
+        storageService.deleteImage("path/to/image.jpg");
+
+        verify(storageProvider).delete("path/to/image.jpg");
     }
 
     @Test
-    void saveImage_ioException_lancaStorageException() throws IOException {
-        UUID creatorId = UUID.randomUUID();
-        UUID outfitId = UUID.randomUUID();
-        MultipartFile file = mock(MultipartFile.class);
-        when(file.getOriginalFilename()).thenReturn("photo.jpg");
-        when(file.getInputStream()).thenThrow(new IOException("disco cheio"));
+    void deleteImage_caminhoNulo_ignoraSemChamarProvider() {
+        storageService.deleteImage(null);
 
-        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
-            mockedFiles.when(() -> Files.createDirectories(any(Path.class))).thenReturn(null);
-
-            assertThatThrownBy(() -> storageService.saveImage(file, creatorId, outfitId, "main_look_1"))
-                    .isInstanceOf(StorageException.class)
-                    .hasMessageContaining("Failed to store file");
-        }
+        verifyNoInteractions(storageProvider);
     }
 
     @Test
-    void saveImage_criaSubdiretoriosComCreatorIdEOutfitId() {
-        UUID creatorId = UUID.randomUUID();
-        UUID outfitId = UUID.randomUUID();
-        MockMultipartFile file = new MockMultipartFile("img", "photo.jpg", "image/jpeg", new byte[]{1});
+    void deleteImage_caminhoEmBranco_ignoraSemChamarProvider() {
+        storageService.deleteImage("   ");
 
-        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
-            mockedFiles.when(() -> Files.createDirectories(any(Path.class))).thenReturn(null);
-            mockedFiles.when(() -> Files.copy(any(InputStream.class), any(Path.class), any())).thenReturn(1L);
-
-            storageService.saveImage(file, creatorId, outfitId, "main_look_1");
-
-            mockedFiles.verify(() -> Files.createDirectories(argThat(p ->
-                    p.toString().contains(creatorId.toString()) && p.toString().contains(outfitId.toString())
-            )));
-        }
+        verifyNoInteractions(storageProvider);
     }
 }

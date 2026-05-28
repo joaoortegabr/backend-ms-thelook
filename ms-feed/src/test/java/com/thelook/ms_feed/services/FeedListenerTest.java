@@ -1,5 +1,6 @@
 package com.thelook.ms_feed.services;
 
+import com.thelook.dtos.OutfitDeletedDTO;
 import com.thelook.dtos.OutfitSyncDTO;
 import com.thelook.enums.ImageProcessStatus;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,25 @@ class FeedListenerTest {
         doThrow(new RuntimeException("Elasticsearch indisponivel")).when(outfitIndexService).index(dto);
 
         assertThatThrownBy(() -> feedListener.handleOutfitCreated(dto))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Elasticsearch indisponivel");
+    }
+
+    @Test
+    void handleOutfitDeleted_sucesso_delegaParaIndexService() {
+        OutfitDeletedDTO dto = new OutfitDeletedDTO(UUID.randomUUID(), UUID.randomUUID());
+
+        feedListener.handleOutfitDeleted(dto);
+
+        verify(outfitIndexService).removeById(dto.outfitId());
+    }
+
+    @Test
+    void handleOutfitDeleted_excecaoNoRemove_propagaErro() {
+        OutfitDeletedDTO dto = new OutfitDeletedDTO(UUID.randomUUID(), UUID.randomUUID());
+        doThrow(new RuntimeException("Elasticsearch indisponivel")).when(outfitIndexService).removeById(dto.outfitId());
+
+        assertThatThrownBy(() -> feedListener.handleOutfitDeleted(dto))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Elasticsearch indisponivel");
     }

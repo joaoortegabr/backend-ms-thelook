@@ -47,15 +47,27 @@ class FeedServiceTest {
     }
 
     @Test
-    void findByCreatorId_retornaListaDoRepositorio() {
+    @SuppressWarnings("unchecked")
+    void findByCreatorId_delegaParaElasticsearch() {
         UUID creatorId = UUID.randomUUID();
-        OutfitDocument doc = new OutfitDocument();
-        when(repository.findByCreatorId(creatorId.toString())).thenReturn(List.of(doc));
+        mockSearchHits();
 
-        List<OutfitDocument> result = feedService.findByCreatorId(creatorId);
+        SearchHits<OutfitDocument> result = feedService.findByCreatorId(creatorId, 20, null);
 
-        assertThat(result).hasSize(1);
-        verify(repository).findByCreatorId(creatorId.toString());
+        assertThat(result).isNotNull();
+        verify(elasticsearchOperations).search(any(Query.class), eq(OutfitDocument.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void findByCreatorId_comLastSortValues_usaSearchAfterValido() {
+        UUID creatorId = UUID.randomUUID();
+        mockSearchHits();
+        List<Object> cursor = List.of(String.valueOf(System.currentTimeMillis()), UUID.randomUUID().toString());
+
+        feedService.findByCreatorId(creatorId, 10, cursor);
+
+        verify(elasticsearchOperations).search(any(Query.class), eq(OutfitDocument.class));
     }
 
     @Test

@@ -94,4 +94,13 @@ class OutfitIndexServiceTest {
 
         assertThat(captor.getValue().getItems()).hasSize(2);
     }
+
+    @Test
+    void removeById_deletaOutfitDoIndice() {
+        UUID outfitId = UUID.randomUUID();
+
+        outfitIndexService.removeById(outfitId);
+
+        verify(repository).deleteById(outfitId.toString());
+    }
 }
