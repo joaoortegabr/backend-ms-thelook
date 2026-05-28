@@ -13,6 +13,7 @@ public interface CreatorMapper {
     @Mapping(target="userId", ignore=true)
     @Mapping(target="createdAt", ignore=true)
     @Mapping(target="isActive", ignore=true)
+    @Mapping(target="followersCount", ignore=true)
     Creator toCreator(CreatorRequest creatorRequest);
 
     CreatorResponse toCreatorResponse(Creator creator);

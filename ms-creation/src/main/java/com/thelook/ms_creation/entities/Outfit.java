@@ -13,7 +13,10 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
-@Table(name="tb_outfit")
+@Table(name="tb_outfit", indexes = {
+        @Index(name = "idx_outfit_creator_id", columnList = "creator_id"),
+        @Index(name = "idx_outfit_image_status", columnList = "imageStatus")
+})
 public class Outfit {
 
     @Id
@@ -29,8 +32,13 @@ public class Outfit {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private OutfitStyle style;
-    @Column(nullable = false)
     @ElementCollection(targetClass = OutfitColor.class)
+    @CollectionTable(
+            name = "tb_outfit_colors",
+            joinColumns = @JoinColumn(name = "outfit_id"),
+            indexes = @Index(name = "idx_outfit_colors_outfit_id", columnList = "outfit_id")
+    )
+    @Column(name = "colors", nullable = false)
     @Size(min = 1, max = 3, message = "Select 1 to 3 colors")
     @Enumerated(EnumType.STRING)
     private Set<OutfitColor> colors;
@@ -41,6 +49,8 @@ public class Outfit {
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     @Enumerated(EnumType.STRING)
     private ImageProcessStatus imageStatus;
+    @Column(nullable = false)
+    private boolean isActive = true;
     @CreationTimestamp
     private LocalDateTime createdAt;
 
@@ -134,6 +144,14 @@ public class Outfit {
 
     public void setImageStatus(ImageProcessStatus imageStatus) {
         this.imageStatus = imageStatus;
+    }
+
+    public boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
     }
 
     public LocalDateTime getCreatedAt() {

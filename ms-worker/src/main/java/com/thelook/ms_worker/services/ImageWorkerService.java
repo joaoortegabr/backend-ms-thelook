@@ -18,8 +18,10 @@ public class ImageWorkerService {
 
     public String processToWebp(String relativePath) {
         try {
-            // 1. Resolve os caminhos dentro do volume compartilhado
-            Path inputPath = Paths.get(uploadDir).resolve(relativePath).normalize();
+            Path base = Paths.get(uploadDir).toRealPath();
+            Path inputPath = base.resolve(relativePath).normalize();
+            if (!inputPath.startsWith(base))
+                throw new SecurityException("Path traversal detectado: " + relativePath);
 
             // Define o output: muda a extensão para .webp e coloca numa pasta 'processed'
             String fileName = inputPath.getFileName().toString().replaceAll("\\.[^.]+$", "") + ".webp";

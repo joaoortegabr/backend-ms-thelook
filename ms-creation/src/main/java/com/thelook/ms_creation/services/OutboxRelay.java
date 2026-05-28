@@ -5,13 +5,21 @@ import com.thelook.ms_creation.repositories.OutboxRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class OutboxRelay {
+
+    private static final long OUTBOX_RELAY_DELAY_MS = 1000;
 
     private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
 
@@ -23,19 +31,38 @@ public class OutboxRelay {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @Scheduled(fixedDelay = 1000)
+    @Scheduled(fixedDelay=OUTBOX_RELAY_DELAY_MS)
+    @Transactional
     public void publishMessages() {
-        List<OutboxMessage> messages = outboxRepository.findByProcessedFalse();
+        Pageable page = PageRequest.of(0, 100);
+        List<OutboxMessage> messages = outboxRepository.findByProcessedFalse(page);
+        List<UUID> processedIds = new ArrayList<>();
 
         for (OutboxMessage message : messages) {
-            try {
-                rabbitTemplate.convertAndSend("ex.thelook.outfit", "outfit.created", message.getPayload());
+            String routingKey = switch (message.getType()) {
+                case "OUTFIT_CREATED", "OUTFIT_UPDATED" -> "feed.sync";
+                case "OUTFIT_DELETED" -> "outfit.deleted";
+                default -> {
+                    log.warn("Tipo desconhecido no Outbox: {} (id={})", message.getType(), message.getId());
+                    yield null;
+                }
+            };
 
-                message.setProcessed(true);
-                outboxRepository.save(message);
+            if (routingKey == null) {
+                processedIds.add(message.getId()); // evita reprocessamento infinito de tipos inválidos
+                continue;
+            }
+
+            try {
+                rabbitTemplate.convertAndSend("ex.thelook.outfit", routingKey, message.getPayload());
+                processedIds.add(message.getId());
             } catch (Exception e) {
                 log.error("Falha ao enviar mensagem do Outbox {}: {}", message.getId(), e.getMessage(), e);
             }
+        }
+
+        if (!processedIds.isEmpty()) {
+            outboxRepository.markAsProcessed(processedIds);
         }
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -37,7 +38,7 @@ class StorageServiceTest {
 
         try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
             mockedFiles.when(() -> Files.createDirectories(any(Path.class))).thenReturn(null);
-            mockedFiles.when(() -> Files.copy(any(), any(Path.class), any())).thenReturn(3L);
+            mockedFiles.when(() -> Files.copy(any(InputStream.class), any(Path.class), any())).thenReturn(3L);
 
             String path = storageService.saveImage(file, creatorId, outfitId, "main_look_1");
 
@@ -56,7 +57,7 @@ class StorageServiceTest {
 
         try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
             mockedFiles.when(() -> Files.createDirectories(any(Path.class))).thenReturn(null);
-            mockedFiles.when(() -> Files.copy(any(), any(Path.class), any())).thenReturn(1L);
+            mockedFiles.when(() -> Files.copy(any(InputStream.class), any(Path.class), any())).thenReturn(1L);
 
             String path = storageService.saveImage(file, creatorId, outfitId, "item_0");
 
@@ -89,7 +90,7 @@ class StorageServiceTest {
 
         try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
             mockedFiles.when(() -> Files.createDirectories(any(Path.class))).thenReturn(null);
-            mockedFiles.when(() -> Files.copy(any(), any(Path.class), any())).thenReturn(1L);
+            mockedFiles.when(() -> Files.copy(any(InputStream.class), any(Path.class), any())).thenReturn(1L);
 
             storageService.saveImage(file, creatorId, outfitId, "main_look_1");
 

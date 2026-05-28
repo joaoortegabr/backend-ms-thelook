@@ -12,6 +12,8 @@ public interface OutfitElasticRepository extends ListCrudRepository<OutfitDocume
 
     List<OutfitDocument> findByCreatorId(String creatorId);
 
+    void deleteByCreatorId(String creatorId);
+
     List<OutfitDocument> findByStyle(String style);
 
     List<OutfitDocument> findByImageStatusOrderByCreatedAtDesc(String status);

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -33,6 +34,7 @@ public class Creator {
     private boolean isActive;
     @Column(name = "followers_count")
     private long followersCount = 0;
+    private LocalDateTime deletedAt;
 
     public Creator() {
     }
@@ -152,6 +154,14 @@ public class Creator {
 
     public void setFollowersCount(long followersCount) {
         this.followersCount = followersCount;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     @Override

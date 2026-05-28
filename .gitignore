@@ -1,4 +1,6 @@
 *.properties
+dev.env
+.env
 
 ##############################
 ## Java

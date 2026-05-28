@@ -19,6 +19,8 @@ public class RabbitMQConfig {
     private String appName;
 
     public static final String OUTFIT_EXCHANGE = "ex.thelook.outfit";
+    public static final String CREATOR_EXCHANGE = "ex.thelook.creator";
+    public static final String QUEUE_CREATOR_LIFECYCLE = "q.creator.lifecycle.creation";
 
     public static final String QUEUE_IMAGE_HIGH = "q.image.process.high";
     public static final String QUEUE_IMAGE_LOW = "q.image.process.low";
@@ -34,6 +36,21 @@ public class RabbitMQConfig {
     @Bean
     public TopicExchange outfitExchange() {
         return new TopicExchange(OUTFIT_EXCHANGE);
+    }
+
+    @Bean
+    public TopicExchange creatorExchange() {
+        return new TopicExchange(CREATOR_EXCHANGE);
+    }
+
+    @Bean
+    public Queue creatorLifecycleQueue() {
+        return new Queue(QUEUE_CREATOR_LIFECYCLE, true);
+    }
+
+    @Bean
+    public Binding bindCreatorLifecycle(Queue creatorLifecycleQueue, TopicExchange creatorExchange) {
+        return BindingBuilder.bind(creatorLifecycleQueue).to(creatorExchange).with("creator.lifecycle");
     }
 
     // Filas como Duráveis (true) para não sumirem se o Rabbit reiniciar

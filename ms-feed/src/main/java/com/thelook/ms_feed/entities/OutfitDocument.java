@@ -27,6 +27,8 @@ public class OutfitDocument {
     private String imageStatus;
     @Field(type = FieldType.Nested)
     private List<ItemDocument> items = new ArrayList<>();;
+    @Field(type = FieldType.Boolean)
+    private boolean isActive = true;
     @Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -116,6 +118,14 @@ public class OutfitDocument {
 
     public void setItems(List<ItemDocument> items) {
         this.items = items;
+    }
+
+    public boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
     }
 
     public LocalDateTime getCreatedAt() {

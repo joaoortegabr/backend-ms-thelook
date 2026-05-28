@@ -1,16 +1,20 @@
 package com.thelook.ms_feed.controllers;
 
 import com.thelook.ms_feed.entities.OutfitDocument;
+import com.thelook.ms_feed.models.dtos.FeedPageResponse;
 import com.thelook.ms_feed.services.FeedService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/outfits")
 public class FeedController {
@@ -22,12 +26,12 @@ public class FeedController {
     }
 
     @GetMapping("/feed")
-    public ResponseEntity<Map<String, Object>> getFeed(
+    public ResponseEntity<FeedPageResponse> getFeed(
             @RequestParam(required = false) String style,
             @RequestParam(required = false) List<String> colors,
             @RequestParam(required = false) String itemType,
             @RequestParam(required = false) String title,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
             @RequestParam(required = false) List<Object> lastSortValues) {
 
         SearchHits<OutfitDocument> hits = feedService.searchFeed(style, colors, itemType, title, size, lastSortValues);
@@ -36,15 +40,11 @@ public class FeedController {
                 .map(SearchHit::getContent)
                 .toList();
 
-        List<Object> nextSortValues = hits.getSearchHits().isEmpty()
+        List<Object> nextCursor = outfits.size() < size
                 ? null
                 : hits.getSearchHits().getLast().getSortValues();
 
-        return ResponseEntity.ok(Map.of(
-                "outfits", outfits,
-                "total", hits.getTotalHits(),
-                "nextSortValues", nextSortValues != null ? nextSortValues : List.of()
-        ));
+        return ResponseEntity.ok(new FeedPageResponse(outfits, hits.getTotalHits(), nextCursor));
     }
 
     @GetMapping("/{outfitId}")
@@ -55,7 +55,21 @@ public class FeedController {
     }
 
     @GetMapping("/creator/{creatorId}")
-    public ResponseEntity<List<OutfitDocument>> getByCreator(@PathVariable UUID creatorId) {
-        return ResponseEntity.ok(feedService.findByCreatorId(creatorId));
+    public ResponseEntity<FeedPageResponse> getByCreator(
+            @PathVariable UUID creatorId,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) List<Object> lastSortValues) {
+
+        SearchHits<OutfitDocument> hits = feedService.findByCreatorId(creatorId, size, lastSortValues);
+
+        List<OutfitDocument> outfits = hits.getSearchHits().stream()
+                .map(SearchHit::getContent)
+                .toList();
+
+        List<Object> nextCursor = outfits.size() < size
+                ? null
+                : hits.getSearchHits().getLast().getSortValues();
+
+        return ResponseEntity.ok(new FeedPageResponse(outfits, hits.getTotalHits(), nextCursor));
     }
 }

@@ -34,7 +34,7 @@ public class ImageTaskListener {
             channel.basicAck(tag, false); // Confirma que processou com sucesso
         } catch (Exception e) {
             System.err.println("Erro no processamento HIGH: " + e.getMessage());
-            channel.basicNack(tag, false, true); // Devolve para a fila se falhar
+            channel.basicNack(tag, false, false); // Devolve para a fila se falhar
         }
     }
 
@@ -46,7 +46,7 @@ public class ImageTaskListener {
             channel.basicAck(tag, false);
         } catch (Exception e) {
             System.err.println("Erro no processamento LOW: " + e.getMessage());
-            channel.basicNack(tag, false, true);
+            channel.basicNack(tag, false, false);
         }
     }
 

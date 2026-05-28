@@ -1,38 +1,29 @@
 package com.thelook.ms_creation.services;
 
-import com.thelook.exceptions.StorageException;
+import com.thelook.ms_creation.storage.ImageTypeValidator;
+import com.thelook.ms_creation.storage.StorageProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class StorageService {
 
-    private final Path root = Paths.get("uploads/outfits");
+    private final StorageProvider storageProvider;
 
-    public String saveImage(MultipartFile file, UUID creatorId, UUID outfitId, String fileName) {
-        try {
-            // uploads/outfits/{creatorId}/{outfitId}/{fileName}.ext
-            Path directory = root.resolve(creatorId.toString()).resolve(outfitId.toString());
-            Files.createDirectories(directory);
-
-            String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
-            Path filePath = directory.resolve(fileName + "." + extension);
-
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            return filePath.toString();
-        } catch (IOException e) {
-            throw new StorageException("Failed to store file", e);
-        }
+    public StorageService(StorageProvider storageProvider) {
+        this.storageProvider = storageProvider;
     }
 
+    public String saveImage(MultipartFile file, UUID creatorId, UUID outfitId, String fileName) {
+        ImageTypeValidator.validate(file);
+        return storageProvider.save(file, creatorId, outfitId, fileName);
+    }
+
+    public void deleteImage(String path) {
+        if (path != null && !path.isBlank()) {
+            storageProvider.delete(path);
+        }
+    }
 }

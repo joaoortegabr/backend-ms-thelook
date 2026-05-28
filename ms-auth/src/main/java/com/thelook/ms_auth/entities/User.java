@@ -21,11 +21,13 @@ public class User implements UserDetails {
     private UUID id;
     @Column(unique = true, nullable = false)
     private String username;
-    @Column(nullable = false)
+    @Column
     private String password;
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private UserRole role;
+    @Column(unique = true)
+    private String googleId;
 
     public User() {
     }
@@ -67,6 +69,14 @@ public class User implements UserDetails {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public String getGoogleId() {
+        return googleId;
+    }
+
+    public void setGoogleId(String googleId) {
+        this.googleId = googleId;
     }
 
     @Override

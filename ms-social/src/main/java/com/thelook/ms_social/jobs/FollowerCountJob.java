@@ -1,5 +1,6 @@
 package com.thelook.ms_social.jobs;
 
+import com.thelook.ms_social.entities.Creator;
 import com.thelook.ms_social.models.dtos.CreatorFollowerCount;
 import com.thelook.ms_social.repositories.CreatorNodeRepository;
 import com.thelook.ms_social.repositories.CreatorRepository;
@@ -10,8 +11,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class FollowerCountJob {
@@ -35,22 +39,32 @@ public class FollowerCountJob {
     public void recalculateFollowerCounts() {
         log.info("Iniciando recalculo de contagem de seguidores");
         List<CreatorFollowerCount> counts = creatorNodeRepository.countFollowersPerCreator();
-        int processed = 0;
 
+        Map<UUID, Long> countMap = new HashMap<>();
         for (CreatorFollowerCount count : counts) {
             try {
-                UUID creatorId = UUID.fromString(count.creatorId());
-                creatorRepository.updateFollowerCount(creatorId, count.total());
-                redisTemplate.opsForValue().set(
-                        "followers:count:" + count.creatorId(),
-                        String.valueOf(count.total())
-                );
-                processed++;
+                countMap.put(UUID.fromString(count.creatorId()), count.total());
             } catch (IllegalArgumentException e) {
                 log.error("creatorId invalido no Neo4j: '{}'. Ignorando.", count.creatorId(), e);
             }
         }
 
-        log.info("Recalculo de seguidores concluido: {}/{} registros processados", processed, counts.size());
+        if (countMap.isEmpty()) {
+            log.info("Nenhum dado de seguidores para processar");
+            return;
+        }
+
+        List<Creator> creators = creatorRepository.findAllById(countMap.keySet());
+        creators.forEach(c -> c.setFollowersCount(countMap.get(c.getId())));
+        creatorRepository.saveAll(creators);
+
+        Map<String, String> redisMap = countMap.entrySet().stream()
+                .collect(Collectors.toMap(
+                        e -> "followers:count:" + e.getKey(),
+                        e -> String.valueOf(e.getValue())
+                ));
+        redisTemplate.opsForValue().multiSet(redisMap);
+
+        log.info("Recalculo de seguidores concluido: {}/{} registros processados", creators.size(), counts.size());
     }
 }

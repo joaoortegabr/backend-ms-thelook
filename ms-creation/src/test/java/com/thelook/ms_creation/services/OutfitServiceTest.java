@@ -109,7 +109,7 @@ class OutfitServiceTest {
     @Test
     void createOutfit_comItens_criaItensNoOutfit() throws Exception {
         UUID creatorId = UUID.randomUUID();
-        ItemRequest itemReq = new ItemRequest(ItemType.SHIRT, "Camiseta", null, "http://loja.com");
+        ItemRequest itemReq = new ItemRequest(ItemType.SHIRT, "Camiseta", null, "http://loja.com", null);
         OutfitRequest request = new OutfitRequest("Look", OutfitStyle.CASUAL, Set.of(OutfitColor.BLUE), List.of(itemReq));
         stubCreateDependencies();
 
@@ -124,7 +124,7 @@ class OutfitServiceTest {
     @Test
     void createOutfit_comItemImage_setaItemImg() throws Exception {
         UUID creatorId = UUID.randomUUID();
-        ItemRequest itemReq = new ItemRequest(ItemType.SHOES, "Tenis", null, "http://loja.com");
+        ItemRequest itemReq = new ItemRequest(ItemType.SHOES, "Tenis", null, "http://loja.com", null);
         OutfitRequest request = new OutfitRequest("Look", OutfitStyle.SPORT, Set.of(OutfitColor.RED), List.of(itemReq));
         stubCreateDependencies();
         when(storageService.saveImage(any(), any(), any(), eq("item_0"))).thenReturn("path/item0.jpg");

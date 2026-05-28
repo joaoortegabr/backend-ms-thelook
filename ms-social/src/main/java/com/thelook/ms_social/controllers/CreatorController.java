@@ -59,4 +59,10 @@ public class CreatorController {
         return ResponseEntity.ok().body(response);
     }
 
+    @PostMapping("/reactivate")
+    public ResponseEntity<CreatorResponse> reactivate(
+            @RequestHeader(name = "X-User-Id") UUID userId) {
+        return ResponseEntity.ok(mapper.toCreatorResponse(creatorService.reactivate(userId)));
+    }
+
 }

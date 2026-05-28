@@ -47,7 +47,56 @@ public class SocialService {
 
         creatorNodeRepository.unfollow(creatorId, targetId);
         redisTemplate.opsForValue().decrement("followers:count:" + targetId);
-        log.info("Creator {} deixou de seguir {}. Contador de seguidores de {} decrementado", creatorId, targetId, targetId);
+        log.info("Creator {} deixou de seguir {}. Contador decrementado", creatorId, targetId);
+    }
+
+    public void favorite(UUID creatorId, UUID targetId) {
+
+        if (creatorId.equals(targetId))
+            throw new BusinessRuleException("You can't favorite your own profile");
+
+        if (creatorNodeRepository.isFavorite(creatorId, targetId)) {
+            log.debug("Creator {} ja favoritou {}, ignorando", creatorId, targetId);
+            return;
+        }
+
+        creatorNodeRepository.favorite(creatorId, targetId);
+        log.info("Creator {} favoritou {}", creatorId, targetId);
+    }
+
+    public void unfavorite(UUID creatorId, UUID targetId) {
+
+        if (!creatorNodeRepository.isFavorite(creatorId, targetId)) {
+            log.debug("Creator {} nao favoritou {}, ignorando unfavorite", creatorId, targetId);
+            return;
+        }
+
+        creatorNodeRepository.unfavorite(creatorId, targetId);
+        log.info("Creator {} desfavoritou {}", creatorId, targetId);
+    }
+
+    public void likeOutfit(UUID creatorId, UUID outfitId) {
+
+        if (creatorNodeRepository.isLiking(creatorId, outfitId)) {
+            log.debug("Creator {} ja curtiu outfit {}, ignorando", creatorId, outfitId);
+            return;
+        }
+
+        creatorNodeRepository.like(creatorId, outfitId);
+        redisTemplate.opsForValue().increment("likes:count:" + outfitId);
+        log.info("Creator {} curtiu outfit {}. Contador incrementado", creatorId, outfitId);
+    }
+
+    public void unlikeOutfit(UUID creatorId, UUID outfitId) {
+
+        if (!creatorNodeRepository.isLiking(creatorId, outfitId)) {
+            log.debug("Creator {} nao curtiu outfit {}, ignorando unlike", creatorId, outfitId);
+            return;
+        }
+
+        creatorNodeRepository.unlike(creatorId, outfitId);
+        redisTemplate.opsForValue().decrement("likes:count:" + outfitId);
+        log.info("Creator {} removeu curtida do outfit {}. Contador decrementado", creatorId, outfitId);
     }
 
 }

@@ -47,7 +47,7 @@ class OutfitEventPublisherTest {
 
         verify(rabbitTemplate).convertAndSend(RabbitMQConfig.OUTFIT_EXCHANGE, "feed.sync.created", outfitMapper.toOutfitSyncDTO(outfit));
         verify(rabbitTemplate).convertAndSend(eq(RabbitMQConfig.OUTFIT_EXCHANGE), eq("image.high.process"), any(Map.class));
-        verify(rabbitTemplate, never()).convertAndSend(eq(RabbitMQConfig.OUTFIT_EXCHANGE), eq("image.low.process"), any());
+        verify(rabbitTemplate, never()).convertAndSend(eq(RabbitMQConfig.OUTFIT_EXCHANGE), eq("image.low.process"), any(Object.class));
     }
 
     @Test

@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
 import com.thelook.ms_feed.entities.OutfitDocument;
 import com.thelook.ms_feed.repositories.OutfitElasticRepository;
+import com.thelook.ms_feed.validation.SearchAfterValidator;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
@@ -29,8 +30,22 @@ public class FeedService {
         return repository.findById(outfitId);
     }
 
-    public List<OutfitDocument> findByCreatorId(UUID creatorId) {
-        return repository.findByCreatorId(creatorId.toString());
+    public SearchHits<OutfitDocument> findByCreatorId(UUID creatorId, int size, List<Object> lastSortValues) {
+        SearchAfterValidator.validate(lastSortValues);
+        var query = QueryBuilders.bool(b -> b
+                .must(QueryBuilders.term(t -> t.field("creatorId").value(creatorId.toString())))
+                .mustNot(QueryBuilders.term(t -> t.field("isActive").value(false)))
+        );
+        var queryBuilder = new NativeQueryBuilder()
+                .withMaxResults(size)
+                .withQuery(query)
+                .withSort(Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+
+        if (lastSortValues != null && !lastSortValues.isEmpty()) {
+            queryBuilder.withSearchAfter(lastSortValues);
+        }
+
+        return elasticsearchOperations.search(queryBuilder.build(), OutfitDocument.class);
     }
 
     public SearchHits<OutfitDocument> searchFeed(
@@ -40,6 +55,8 @@ public class FeedService {
             String title,
             int size,
             List<Object> lastSortValues) {
+
+        SearchAfterValidator.validate(lastSortValues);
 
         var queryBuilder = new NativeQueryBuilder()
                 .withMaxResults(size);
@@ -67,6 +84,7 @@ public class FeedService {
         }
 
         boolQuery.must(q -> q.term(t -> t.field("imageStatus").value("READY")));
+        boolQuery.mustNot(q -> q.term(t -> t.field("isActive").value(false)));
 
         queryBuilder.withQuery(boolQuery.build()._toQuery());
 

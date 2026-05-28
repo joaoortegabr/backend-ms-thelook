@@ -12,7 +12,7 @@ import com.thelook.ms_social.services.CreatorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,8 +32,8 @@ class CreatorControllerTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
-    @MockBean CreatorService creatorService;
-    @MockBean CreatorMapper mapper;
+    @MockitoBean CreatorService creatorService;
+    @MockitoBean CreatorMapper mapper;
 
     private CreatorResponse response(UUID id) {
         return new CreatorResponse(id, "Alice", null, "Bio", "alice_ig",

@@ -28,9 +28,32 @@ public interface CreatorNodeRepository extends Neo4jRepository<CreatorNode, UUID
             "RETURN c.creatorId as creatorId, count(follower) as total")
     List<CreatorFollowerCount> countFollowersPerCreator();
 
+    // --- Favorites ---
+
+    @Query("RETURN EXISTS((:Creator {creatorId: $creatorId})-[:FAVORITES]->(:Creator {creatorId: $targetId}))")
+    boolean isFavorite(UUID creatorId, UUID targetId);
+
+    @Query("MATCH (a:Creator {creatorId: $creatorId}) " +
+            "MATCH (b:Creator {creatorId: $targetId}) " +
+            "MERGE (a)-[:FAVORITES]->(b)")
+    void favorite(UUID creatorId, UUID targetId);
+
+    @Query("MATCH (:Creator {creatorId: $creatorId})-[r:FAVORITES]->(:Creator {creatorId: $targetId}) DELETE r")
+    void unfavorite(UUID creatorId, UUID targetId);
+
+    // --- Outfit Likes ---
+
+    @Query("RETURN EXISTS((:Creator {creatorId: $creatorId})-[:LIKES]->(:Outfit {outfitId: $outfitId}))")
+    boolean isLiking(UUID creatorId, UUID outfitId);
+
     @Query("MATCH (c:Creator {creatorId: $creatorId}) " +
-            "OPTIONAL MATCH (c)-[:POSTED]->(p:Photo) " +
-            "OPTIONAL MATCH ()-[l:LIKES]->(p) " +
-            "DETACH DELETE c, p, l")
+            "MERGE (o:Outfit {outfitId: $outfitId}) " +
+            "MERGE (c)-[:LIKES]->(o)")
+    void like(UUID creatorId, UUID outfitId);
+
+    @Query("MATCH (:Creator {creatorId: $creatorId})-[r:LIKES]->(:Outfit {outfitId: $outfitId}) DELETE r")
+    void unlike(UUID creatorId, UUID outfitId);
+
+    @Query("MATCH (c:Creator {creatorId: $creatorId}) DETACH DELETE c")
     void deepDeleteCreator(UUID creatorId);
 }

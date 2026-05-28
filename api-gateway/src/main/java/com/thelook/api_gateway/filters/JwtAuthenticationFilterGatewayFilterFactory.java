@@ -11,9 +11,15 @@ import org.springframework.core.Ordered;
 import org.springframework.data.redis.core.ReactiveRedisOperations;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilterGatewayFilterFactory
@@ -25,6 +31,9 @@ public class JwtAuthenticationFilterGatewayFilterFactory
     private final JwtService jwtService;
     private final ReactiveRedisOperations<String, String> redisOps;
     private final GatewaySecurityProperties securityProperties;
+
+    @org.springframework.beans.factory.annotation.Value("${internal.secret}")
+    private String internalSecret;
 
     public JwtAuthenticationFilterGatewayFilterFactory(JwtService jwtService,
                                                        @Qualifier("reactiveRedisOperations")
@@ -42,7 +51,10 @@ public class JwtAuthenticationFilterGatewayFilterFactory
             String path = exchange.getRequest().getURI().getPath();
 
             if (isPublicPath(path)) {
-                return chain.filter(exchange);
+                ServerHttpRequest publicRequest = exchange.getRequest().mutate()
+                        .header("X-Internal-Secret", internalSecret)
+                        .build();
+                return chain.filter(exchange.mutate().request(publicRequest).build());
             }
 
             String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
@@ -74,6 +86,11 @@ public class JwtAuthenticationFilterGatewayFilterFactory
                                             proceedWithHeaders(exchange, chain::filter, userId, username, role, creatorIdFromRedis))
                                     .switchIfEmpty(Mono.defer(() ->
                                             proceedWithHeaders(exchange, chain::filter, userId, username, role, null)));
+                        })
+                        .onErrorResume(UnauthorizedException.class, Mono::error)
+                        .onErrorResume(e -> {
+                            log.error("Erro inesperado no filtro JWT: {}", e.getMessage(), e);
+                            return Mono.error(new UnauthorizedException("Token inválido ou expirado"));
                         });
 
             } catch (Exception e) {
@@ -95,6 +112,7 @@ public class JwtAuthenticationFilterGatewayFilterFactory
                                           String creatorId) {
 
         ServerHttpRequest.Builder builder = exchange.getRequest().mutate()
+                .header("X-Internal-Secret", internalSecret)
                 .header("X-User-Id", userId)
                 .header("X-Username", username)
                 .header("X-User-Role", role);
@@ -103,7 +121,12 @@ public class JwtAuthenticationFilterGatewayFilterFactory
             builder.header("X-Creator-Id", creatorId);
         }
 
-        return next.apply(exchange.mutate().request(builder.build()).build());
+        var authentication = new UsernamePasswordAuthenticationToken(
+                username, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+        var securityContext = new SecurityContextImpl(authentication);
+
+        return next.apply(exchange.mutate().request(builder.build()).build())
+                .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(securityContext)));
     }
 
     @Override

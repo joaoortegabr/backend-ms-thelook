@@ -41,4 +41,52 @@ public class SocialController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/favorite/{targetId}")
+    public ResponseEntity<Void> favorite(
+            @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
+            @PathVariable UUID targetId) {
+
+        if (creatorId == null)
+            throw new IncompleteProfileException("You must complete your profile before favoriting someone");
+
+        socialService.favorite(creatorId, targetId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/favorite/{targetId}")
+    public ResponseEntity<Void> unfavorite(
+            @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
+            @PathVariable UUID targetId) {
+
+        if (creatorId == null)
+            throw new IncompleteProfileException("You must complete your profile before unfavoriting someone");
+
+        socialService.unfavorite(creatorId, targetId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/like/{outfitId}")
+    public ResponseEntity<Void> likeOutfit(
+            @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
+            @PathVariable UUID outfitId) {
+
+        if (creatorId == null)
+            throw new IncompleteProfileException("You must complete your profile before liking an outfit");
+
+        socialService.likeOutfit(creatorId, outfitId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/like/{outfitId}")
+    public ResponseEntity<Void> unlikeOutfit(
+            @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
+            @PathVariable UUID outfitId) {
+
+        if (creatorId == null)
+            throw new IncompleteProfileException("You must complete your profile before unliking an outfit");
+
+        socialService.unlikeOutfit(creatorId, outfitId);
+        return ResponseEntity.noContent().build();
+    }
+
 }

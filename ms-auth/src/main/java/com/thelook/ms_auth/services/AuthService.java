@@ -62,7 +62,7 @@ public class AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new UnprocessableRequestException("Invalid username or password"));
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword()))
+        if (user.getPassword() == null || !passwordEncoder.matches(request.password(), user.getPassword()))
             throw new UnprocessableRequestException("Invalid username or password");
 
         String redisKey = "user:profile:" + user.getId();
@@ -97,15 +97,26 @@ public class AuthService {
             throw new InvalidAccessTokenException("Refresh token is invalid or expired");
         }
 
+        if (Boolean.TRUE.equals(redisTemplate.hasKey("auth:blocklist:" + refreshToken))) {
+            throw new InvalidAccessTokenException("Refresh token has already been used");
+        }
+
+        // invalidate used refresh token for the remainder of its lifetime
+        long ttl = jwtService.extractExpiration(refreshToken).getTime() - System.currentTimeMillis();
+        if (ttl > 0) {
+            redisTemplate.opsForValue().set("auth:blocklist:" + refreshToken, "1", ttl, TimeUnit.MILLISECONDS);
+        }
+
         String username = jwtService.extractUsername(refreshToken);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String creatorId = redisTemplate.opsForValue().get("user:profile:" + user.getId());
 
-        String newToken = jwtService.generateToken(user, creatorId);
+        String newAccessToken = jwtService.generateToken(user, creatorId);
+        String newRefreshToken = jwtService.generateRefreshToken(user);
 
-        return new RefreshResponse(newToken, "Bearer", EXPIRATION_TIME);
+        return new RefreshResponse(newAccessToken, newRefreshToken, "Bearer", EXPIRATION_TIME, REFRESH_EXPIRATION_TIME);
     }
 
 }

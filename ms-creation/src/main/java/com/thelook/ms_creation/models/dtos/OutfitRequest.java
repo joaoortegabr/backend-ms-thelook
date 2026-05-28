@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Set;
 
 public record OutfitRequest(
-        @NotBlank String title,
+        @NotBlank @Size(max = 64) String title,
         @NotNull OutfitStyle style,
         @NotEmpty Set<OutfitColor> colors,
         @Valid @Size(max = 6) List<ItemRequest> items

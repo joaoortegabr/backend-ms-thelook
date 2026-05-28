@@ -2,6 +2,7 @@ package com.thelook.ms_creation.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thelook.dtos.OutfitDeletedDTO;
 import com.thelook.dtos.OutfitSyncDTO;
 import com.thelook.enums.ImageProcessStatus;
 import com.thelook.exceptions.BusinessRuleException;
@@ -41,7 +42,7 @@ public class OutfitService {
     }
 
     public Outfit findById(UUID outfitId) {
-        return outfitRepository.findById(outfitId)
+        return outfitRepository.findWithItemsById(outfitId)
                 .orElseThrow(() -> new ResourceNotFoundException(outfitId));
     }
 
@@ -107,7 +108,7 @@ public class OutfitService {
 
     @Transactional
     public void delete(UUID outfitId, UUID creatorId) {
-        Outfit outfit = outfitRepository.findById(outfitId)
+        Outfit outfit = outfitRepository.findWithItemsById(outfitId)
                 .orElseThrow(() -> new ResourceNotFoundException("Outfit não encontrado"));
 
         if (!outfit.getCreatorId().equals(creatorId)) {
@@ -115,7 +116,16 @@ public class OutfitService {
         }
 
         outfitRepository.delete(outfit);
-        // Próximo passo: disparar evento para deletar arquivo físico e nó no Neo4j
+
+        OutboxMessage deleteEvent = new OutboxMessage();
+        try {
+            deleteEvent.setAggregateId(outfitId.toString());
+            deleteEvent.setType("OUTFIT_DELETED");
+            deleteEvent.setPayload(objectMapper.writeValueAsString(new OutfitDeletedDTO(outfitId, creatorId)));
+        } catch (JsonProcessingException e) {
+            throw new BusinessRuleException("Erro ao serializar evento de deleção: " + e.getMessage());
+        }
+        outboxRepository.save(deleteEvent);
     }
 
 }

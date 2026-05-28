@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ImageStatusListener {
@@ -19,10 +20,11 @@ public class ImageStatusListener {
         this.repository = repository;
     }
 
+    @Transactional
     @RabbitListener(queues = "q.image.status.updated.ms-creation")
     public void handleImageProcessed(ImageProcessedDTO dto) {
         log.info("Recebido update de imagem para outfit {}: tipo={}", dto.outfitId(), dto.type());
-        repository.findById(dto.outfitId()).ifPresentOrElse(outfit -> {
+        repository.findWithItemsById(dto.outfitId()).ifPresentOrElse(outfit -> {
             if ("OUTFIT".equals(dto.type())) {
                 outfit.setImage1Url(dto.processedPath());
                 outfit.setImageStatus(ImageProcessStatus.READY);

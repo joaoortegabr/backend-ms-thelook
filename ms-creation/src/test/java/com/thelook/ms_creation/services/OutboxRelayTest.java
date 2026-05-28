@@ -37,7 +37,7 @@ class OutboxRelayTest {
 
         outboxRelay.publishMessages();
 
-        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any());
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
     }
 
     @Test
@@ -83,7 +83,7 @@ class OutboxRelayTest {
 
         outboxRelay.publishMessages();
 
-        verify(rabbitTemplate, times(2)).convertAndSend(anyString(), anyString(), any());
+        verify(rabbitTemplate, times(2)).convertAndSend(anyString(), anyString(), any(Object.class));
         verify(outboxRepository, times(2)).save(any());
     }
 

@@ -4,12 +4,59 @@ gateway:
       - "/api/v1/auth/login"
       - "/api/v1/auth/register"
       - "/api/v1/auth/refresh"
+      - "/api/v1/auth/google"
       - "/eureka"
 
 spring:
   cloud:
     gateway:
       routes:
+        # Rotas específicas para login e register vêm antes da rota geral do ms-auth
+        # para aplicar rate limiting por IP (brute force protection)
+        - id: ms-auth-login
+          uri: lb://ms-auth
+          predicates:
+            - Path=/api/v1/auth/login
+            - Method=POST
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 5
+                redis-rate-limiter.requestedTokens: 5
+                key-resolver: "#{@ipKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: authCircuitBreaker
+                fallbackUri: forward:/fallback/auth
+                statusCodes:
+                  - 502
+                  - 503
+                  - 504
+
+        - id: ms-auth-register
+          uri: lb://ms-auth
+          predicates:
+            - Path=/api/v1/auth/register
+            - Method=POST
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 3
+                redis-rate-limiter.requestedTokens: 3
+                key-resolver: "#{@ipKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: authCircuitBreaker
+                fallbackUri: forward:/fallback/auth
+                statusCodes:
+                  - 502
+                  - 503
+                  - 504
+
         - id: ms-auth
           uri: lb://ms-auth
           predicates:
@@ -61,10 +108,10 @@ spring:
         - id: ms-creation
           uri: lb://ms-creation
           predicates:
-            - Path=/api/v1/creation/outfits/**
-            - Path=/api/v1/creation/items/**
+            - Path=/api/v1/creation/outfits,/api/v1/creation/outfits/**
           filters:
             - name: JwtAuthenticationFilter
+            - name: MultipartContentTypeFilter
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: 10

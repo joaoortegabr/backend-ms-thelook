@@ -9,10 +9,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    // USAR A MESMA EXCHANGE DO CREATION
-    public static final String OUTFIT_EXCHANGE = "ex.thelook.outfit";
+    public static final String OUTFIT_EXCHANGE  = "ex.thelook.outfit";
+    public static final String DLX_EXCHANGE     = "ex.thelook.dlx";
     public static final String QUEUE_IMAGE_HIGH = "q.image.process.high";
-    public static final String QUEUE_IMAGE_LOW = "q.image.process.low";
+    public static final String QUEUE_IMAGE_LOW  = "q.image.process.low";
+    public static final String QUEUE_IMAGE_DLQ  = "q.image.failed";
 
     @Bean
     public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
@@ -27,23 +28,43 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public DirectExchange deadLetterExchange() {
+        return new DirectExchange(DLX_EXCHANGE);
+    }
+
+    @Bean
     public Queue highPriorityQueue() {
-        return new Queue(QUEUE_IMAGE_HIGH, true); // Identica à do creation
+        return QueueBuilder.durable(QUEUE_IMAGE_HIGH)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "image.failed")
+                .build();
     }
 
     @Bean
     public Queue lowPriorityQueue() {
-        return new Queue(QUEUE_IMAGE_LOW, true);
+        return QueueBuilder.durable(QUEUE_IMAGE_LOW)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "image.failed")
+                .build();
+    }
+
+    @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder.durable(QUEUE_IMAGE_DLQ).build();
     }
 
     @Bean
     public Binding bindHigh(Queue highPriorityQueue, TopicExchange outfitExchange) {
-        // Usando a mesma Routing Key que o creation usa para enviar
         return BindingBuilder.bind(highPriorityQueue).to(outfitExchange).with("image.high.#");
     }
 
     @Bean
     public Binding bindLow(Queue lowPriorityQueue, TopicExchange outfitExchange) {
         return BindingBuilder.bind(lowPriorityQueue).to(outfitExchange).with("image.low.#");
+    }
+
+    @Bean
+    public Binding bindDlq(Queue deadLetterQueue, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with("image.failed");
     }
 }

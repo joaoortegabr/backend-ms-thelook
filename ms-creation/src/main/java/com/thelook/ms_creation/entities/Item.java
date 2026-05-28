@@ -12,7 +12,9 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name="tb_item")
+@Table(name="tb_item", indexes = {
+        @Index(name = "idx_item_outfit_id", columnList = "outfit_id")
+})
 public class Item {
 
     @Id

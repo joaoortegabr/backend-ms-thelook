@@ -22,6 +22,9 @@ public class RabbitMQConfig {
     // Deve ser IGUAL ao ms-creation
     public static final String OUTFIT_EXCHANGE = "ex.thelook.outfit";
     public static final String QUEUE_FEED_SYNC = "q.feed.sync";
+    public static final String QUEUE_OUTFIT_DELETED = "q.outfit.deleted.feed";
+    public static final String CREATOR_EXCHANGE = "ex.thelook.creator";
+    public static final String QUEUE_CREATOR_LIFECYCLE = "q.creator.lifecycle.feed";
 
     @Bean
     public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
@@ -65,6 +68,31 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(feedSyncQueue)
                 .to(outfitExchange)
                 .with("feed.sync.#");
+    }
+
+    @Bean
+    public Queue outfitDeletedQueue() {
+        return new Queue(QUEUE_OUTFIT_DELETED, true);
+    }
+
+    @Bean
+    public Binding bindOutfitDeleted(Queue outfitDeletedQueue, TopicExchange outfitExchange) {
+        return BindingBuilder.bind(outfitDeletedQueue).to(outfitExchange).with("outfit.deleted");
+    }
+
+    @Bean
+    public TopicExchange creatorExchange() {
+        return new TopicExchange(CREATOR_EXCHANGE);
+    }
+
+    @Bean
+    public Queue creatorLifecycleQueue() {
+        return new Queue(QUEUE_CREATOR_LIFECYCLE, true);
+    }
+
+    @Bean
+    public Binding bindCreatorLifecycle(Queue creatorLifecycleQueue, TopicExchange creatorExchange) {
+        return BindingBuilder.bind(creatorLifecycleQueue).to(creatorExchange).with("creator.lifecycle");
     }
 
 }

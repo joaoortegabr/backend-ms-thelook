@@ -2,6 +2,7 @@ package com.thelook.ms_feed.services;
 
 import com.thelook.dtos.ItemSyncDTO;
 import com.thelook.dtos.OutfitSyncDTO;
+import java.util.UUID;
 import com.thelook.ms_feed.entities.ItemDocument;
 import com.thelook.ms_feed.entities.OutfitDocument;
 import com.thelook.ms_feed.repositories.OutfitElasticRepository;
@@ -44,6 +45,11 @@ public class OutfitIndexService {
 
         repository.save(doc);
         log.debug("Outfit {} salvo no indice com {} itens", dto.outfitId(), doc.getItems().size());
+    }
+
+    public void removeById(UUID outfitId) {
+        repository.deleteById(outfitId.toString());
+        log.info("Outfit {} removido do indice", outfitId);
     }
 
     private ItemDocument mapItemToDocument(ItemSyncDTO itemDto) {

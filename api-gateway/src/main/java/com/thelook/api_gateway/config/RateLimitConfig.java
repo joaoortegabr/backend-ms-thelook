@@ -14,4 +14,25 @@ public class RateLimitConfig {
                 exchange.getRequest().getHeaders().getFirst("X-User-Id")
         ).defaultIfEmpty("anonymous");
     }
+
+    /**
+     * Extrai o IP real do cliente respeitando cabeçalhos de proxy.
+     * Usado em endpoints públicos onde não há X-User-Id disponível.
+     */
+    @Bean
+    public KeyResolver ipKeyResolver() {
+        return exchange -> {
+            String forwarded = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                return Mono.just("ip:" + forwarded.split(",")[0].trim());
+            }
+            String realIp = exchange.getRequest().getHeaders().getFirst("X-Real-IP");
+            if (realIp != null && !realIp.isBlank()) {
+                return Mono.just("ip:" + realIp.trim());
+            }
+            return Mono.justOrEmpty(exchange.getRequest().getRemoteAddress())
+                    .map(addr -> "ip:" + addr.getAddress().getHostAddress())
+                    .defaultIfEmpty("ip:unknown");
+        };
+    }
 }
