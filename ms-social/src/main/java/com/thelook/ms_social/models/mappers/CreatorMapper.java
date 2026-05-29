@@ -14,6 +14,7 @@ public interface CreatorMapper {
     @Mapping(target="createdAt", ignore=true)
     @Mapping(target="isActive", ignore=true)
     @Mapping(target="followersCount", ignore=true)
+    @Mapping(target="deletedAt", ignore=true)
     Creator toCreator(CreatorRequest creatorRequest);
 
     CreatorResponse toCreatorResponse(Creator creator);

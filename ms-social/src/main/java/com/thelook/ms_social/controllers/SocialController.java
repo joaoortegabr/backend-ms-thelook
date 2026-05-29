@@ -17,7 +17,7 @@ public class SocialController {
         this.socialService = socialService;
     }
 
-    @PatchMapping("/follow/{targetId}")
+    @PostMapping("/follow/{targetId}")
     public ResponseEntity<Void> follow(
             @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
             @PathVariable UUID targetId) {
@@ -29,7 +29,7 @@ public class SocialController {
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/unfollow/{targetId}")
+    @DeleteMapping("/follow/{targetId}")
     public ResponseEntity<Void> unfollow(
             @RequestHeader(name="X-Creator-Id", required=false) UUID creatorId,
             @PathVariable UUID targetId) {
@@ -38,7 +38,7 @@ public class SocialController {
             throw new IncompleteProfileException("You must complete your profile before unfollowing someone");
 
         socialService.unfollow(creatorId, targetId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/favorite/{targetId}")

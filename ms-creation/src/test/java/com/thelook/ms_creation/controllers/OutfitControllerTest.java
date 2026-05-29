@@ -7,8 +7,8 @@ import com.thelook.ms_creation.models.dtos.OutfitResponse;
 import com.thelook.ms_creation.models.enums.OutfitColor;
 import com.thelook.ms_creation.models.enums.OutfitStyle;
 import com.thelook.ms_creation.models.mappers.OutfitMapper;
+import com.thelook.ms_creation.services.ItemService;
 import com.thelook.ms_creation.services.OutfitService;
-import com.thelook.ms_creation.services.StorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OutfitControllerTest {
 
     @Mock OutfitService outfitService;
-    @Mock StorageService storageService;
+    @Mock ItemService itemService;
     @Mock OutfitMapper outfitMapper;
 
     MockMvc mockMvc;
@@ -43,7 +43,7 @@ class OutfitControllerTest {
 
     @BeforeEach
     void setUp() {
-        OutfitController controller = new OutfitController(outfitService, storageService, outfitMapper);
+        OutfitController controller = new OutfitController(outfitService, itemService, outfitMapper);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 

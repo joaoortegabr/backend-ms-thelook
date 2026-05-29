@@ -12,7 +12,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SocialController.class)
@@ -23,7 +24,7 @@ class SocialControllerTest {
     @MockitoBean SocialService socialService;
 
     // =========================================================
-    // PATCH /follow/{targetId}
+    // POST /follow/{targetId}
     // =========================================================
 
     @Test
@@ -32,7 +33,7 @@ class SocialControllerTest {
         UUID targetId = UUID.randomUUID();
         doNothing().when(socialService).follow(creatorId, targetId);
 
-        mockMvc.perform(patch("/api/v1/social/follow/{targetId}", targetId)
+        mockMvc.perform(post("/api/v1/social/follow/{targetId}", targetId)
                         .header("X-Creator-Id", creatorId.toString()))
                 .andExpect(status().isOk());
 
@@ -43,7 +44,7 @@ class SocialControllerTest {
     void follow_missingCreatorIdHeader_doesNotCallServiceAndReturnsError() throws Exception {
         UUID targetId = UUID.randomUUID();
 
-        mockMvc.perform(patch("/api/v1/social/follow/{targetId}", targetId))
+        mockMvc.perform(post("/api/v1/social/follow/{targetId}", targetId))
                 .andExpect(result ->
                         org.assertj.core.api.Assertions.assertThat(result.getResponse().getStatus())
                                 .isNotEqualTo(200));
@@ -57,7 +58,7 @@ class SocialControllerTest {
         doThrow(new com.thelook.exceptions.BusinessRuleException("can't follow yourself"))
                 .when(socialService).follow(creatorId, creatorId);
 
-        mockMvc.perform(patch("/api/v1/social/follow/{targetId}", creatorId)
+        mockMvc.perform(post("/api/v1/social/follow/{targetId}", creatorId)
                         .header("X-Creator-Id", creatorId.toString()))
                 .andExpect(result ->
                         org.assertj.core.api.Assertions.assertThat(result.getResponse().getStatus())
@@ -65,18 +66,18 @@ class SocialControllerTest {
     }
 
     // =========================================================
-    // PATCH /unfollow/{targetId}
+    // DELETE /follow/{targetId}
     // =========================================================
 
     @Test
-    void unfollow_withCreatorIdHeader_returns200AndCallsService() throws Exception {
+    void unfollow_withCreatorIdHeader_returns204AndCallsService() throws Exception {
         UUID creatorId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
         doNothing().when(socialService).unfollow(creatorId, targetId);
 
-        mockMvc.perform(patch("/api/v1/social/unfollow/{targetId}", targetId)
+        mockMvc.perform(delete("/api/v1/social/follow/{targetId}", targetId)
                         .header("X-Creator-Id", creatorId.toString()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         verify(socialService).unfollow(creatorId, targetId);
     }
@@ -85,10 +86,10 @@ class SocialControllerTest {
     void unfollow_missingCreatorIdHeader_doesNotCallServiceAndReturnsError() throws Exception {
         UUID targetId = UUID.randomUUID();
 
-        mockMvc.perform(patch("/api/v1/social/unfollow/{targetId}", targetId))
+        mockMvc.perform(delete("/api/v1/social/follow/{targetId}", targetId))
                 .andExpect(result ->
                         org.assertj.core.api.Assertions.assertThat(result.getResponse().getStatus())
-                                .isNotEqualTo(200));
+                                .isNotEqualTo(204));
 
         verifyNoInteractions(socialService);
     }

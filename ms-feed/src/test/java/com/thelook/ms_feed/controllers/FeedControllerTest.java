@@ -110,24 +110,39 @@ class FeedControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getByCreator_retornaListaDeOutfits() throws Exception {
         UUID creatorId = UUID.randomUUID();
         OutfitDocument doc = new OutfitDocument();
         doc.setId("outfit-1");
-        when(feedService.findByCreatorId(creatorId)).thenReturn(List.of(doc));
+
+        SearchHit<OutfitDocument> hit = mock(SearchHit.class);
+        when(hit.getContent()).thenReturn(doc);
+
+        SearchHits<OutfitDocument> hits = mock(SearchHits.class);
+        when(hits.getSearchHits()).thenReturn(List.of(hit));
+        when(hits.getTotalHits()).thenReturn(1L);
+        when(feedService.findByCreatorId(eq(creatorId), anyInt(), any())).thenReturn(hits);
 
         mockMvc.perform(get("/api/v1/outfits/creator/" + creatorId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("outfit-1"));
+                .andExpect(jsonPath("$.outfits[0].id").value("outfit-1"))
+                .andExpect(jsonPath("$.total").value(1));
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getByCreator_semOutfits_retornaListaVazia() throws Exception {
         UUID creatorId = UUID.randomUUID();
-        when(feedService.findByCreatorId(creatorId)).thenReturn(List.of());
+
+        SearchHits<OutfitDocument> hits = mock(SearchHits.class);
+        when(hits.getSearchHits()).thenReturn(List.of());
+        when(hits.getTotalHits()).thenReturn(0L);
+        when(feedService.findByCreatorId(eq(creatorId), anyInt(), any())).thenReturn(hits);
 
         mockMvc.perform(get("/api/v1/outfits/creator/" + creatorId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.outfits").isEmpty())
+                .andExpect(jsonPath("$.total").value(0));
     }
 }

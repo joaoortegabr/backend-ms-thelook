@@ -63,7 +63,7 @@ class ImageTaskListenerTest {
 
         verify(channel).basicNack(2L, false, false);
         verify(channel, never()).basicAck(anyLong(), anyBoolean());
-        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any());
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), (Object) any());
     }
 
     @Test

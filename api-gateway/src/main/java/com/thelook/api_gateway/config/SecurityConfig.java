@@ -29,11 +29,11 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers
-                        .frameOptions(ServerHttpSecurity.HeaderSpec.FrameOptionsSpec::deny)
+                        .frameOptions(org.springframework.security.config.Customizer.withDefaults())
                         .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
                         .referrerPolicy(referrer -> referrer.policy(
                                 ReferrerPolicyServerHttpHeadersWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        .httpStrictTransportSecurity(hsts -> hsts
+                        .hsts(hsts -> hsts
                                 .includeSubdomains(true)
                                 .maxAge(Duration.ofDays(365)))
                 )

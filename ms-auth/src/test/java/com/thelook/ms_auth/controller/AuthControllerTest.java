@@ -142,7 +142,7 @@ class AuthControllerTest {
 
     @Test
     void refresh_validRequest_returns200WithNewToken() throws Exception {
-        RefreshResponse refreshResponse = new RefreshResponse("new.access.token", "Bearer", 900_000L);
+        RefreshResponse refreshResponse = new RefreshResponse("new.access.token", "new.refresh.token", "Bearer", 900_000L, 604_800_000L);
         when(authService.refresh(anyString())).thenReturn(refreshResponse);
 
         mockMvc.perform(post("/api/v1/auth/refresh")
