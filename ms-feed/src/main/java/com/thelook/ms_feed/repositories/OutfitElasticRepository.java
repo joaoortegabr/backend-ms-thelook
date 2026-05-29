@@ -1,14 +1,13 @@
 package com.thelook.ms_feed.repositories;
 
 import com.thelook.ms_feed.entities.OutfitDocument;
-import org.springframework.data.repository.ListCrudRepository;
-import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface OutfitElasticRepository extends ListCrudRepository<OutfitDocument, String>, PagingAndSortingRepository<OutfitDocument, String> {
+public interface OutfitElasticRepository extends ElasticsearchRepository<OutfitDocument, String> {
 
     List<OutfitDocument> findByCreatorId(String creatorId);
 

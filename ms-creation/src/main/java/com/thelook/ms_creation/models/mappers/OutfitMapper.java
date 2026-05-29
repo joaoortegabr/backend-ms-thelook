@@ -17,6 +17,11 @@ public interface OutfitMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "creatorId", ignore = true)
+    @Mapping(target = "image1Url", ignore = true)
+    @Mapping(target = "image2Url", ignore = true)
+    @Mapping(target = "imageStatus", ignore = true)
+    @Mapping(target = "isActive", ignore = true)
     Outfit toOutfit(OutfitRequest outfitRequest);
 
     @Mapping(source = "id", target = "outfitId")

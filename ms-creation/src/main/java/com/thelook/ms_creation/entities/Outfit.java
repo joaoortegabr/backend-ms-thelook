@@ -26,8 +26,9 @@ public class Outfit {
     private UUID creatorId;
     @Column(nullable = false, length=64)
     private String title;
-    @Column(nullable = false)
+    @Column(name = "image1_url", nullable = false)
     private String image1Url;
+    @Column(name = "image2_url")
     private String image2Url;
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

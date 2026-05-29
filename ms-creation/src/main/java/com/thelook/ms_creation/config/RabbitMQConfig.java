@@ -22,8 +22,6 @@ public class RabbitMQConfig {
     public static final String CREATOR_EXCHANGE = "ex.thelook.creator";
     public static final String QUEUE_CREATOR_LIFECYCLE = "q.creator.lifecycle.creation";
 
-    public static final String QUEUE_IMAGE_HIGH = "q.image.process.high";
-    public static final String QUEUE_IMAGE_LOW = "q.image.process.low";
     public static final String QUEUE_FEED_SYNC = "q.feed.sync";
 
     @Bean
@@ -53,26 +51,8 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(creatorLifecycleQueue).to(creatorExchange).with("creator.lifecycle");
     }
 
-    // Filas como Duráveis (true) para não sumirem se o Rabbit reiniciar
-    @Bean
-    public Queue highPriorityQueue() { return new Queue(QUEUE_IMAGE_HIGH, true); }
-
-    @Bean
-    public Queue lowPriorityQueue() { return new Queue(QUEUE_IMAGE_LOW, true); }
-
     @Bean
     public Queue feedSyncQueue() { return new Queue(QUEUE_FEED_SYNC, true); }
-
-    // Bindings: Vinculando as filas à Topic Exchange usando as chaves (Routing Keys)
-    @Bean
-    public Binding bindHigh(Queue highPriorityQueue, TopicExchange outfitExchange) {
-        return BindingBuilder.bind(highPriorityQueue).to(outfitExchange).with("image.high.#");
-    }
-
-    @Bean
-    public Binding bindLow(Queue lowPriorityQueue, TopicExchange outfitExchange) {
-        return BindingBuilder.bind(lowPriorityQueue).to(outfitExchange).with("image.low.#");
-    }
 
     @Bean
     public Binding bindFeed(Queue feedSyncQueue, TopicExchange outfitExchange) {
