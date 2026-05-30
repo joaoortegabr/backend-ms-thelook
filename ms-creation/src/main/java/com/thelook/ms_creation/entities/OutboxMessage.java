@@ -21,6 +21,8 @@ public class OutboxMessage {
     @CreationTimestamp
     private LocalDateTime createdAt = LocalDateTime.now();
     private boolean processed = false;
+    private int retryCount = 0;
+    private LocalDateTime lastAttemptAt;
 
     public OutboxMessage() {
     }
@@ -79,6 +81,22 @@ public class OutboxMessage {
 
     public void setProcessed(boolean processed) {
         this.processed = processed;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public LocalDateTime getLastAttemptAt() {
+        return lastAttemptAt;
+    }
+
+    public void setLastAttemptAt(LocalDateTime lastAttemptAt) {
+        this.lastAttemptAt = lastAttemptAt;
     }
 
     @Override

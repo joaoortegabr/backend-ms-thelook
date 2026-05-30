@@ -13,10 +13,14 @@ import java.util.UUID;
 @Repository
 public interface OutboxRepository extends JpaRepository<OutboxMessage, UUID> {
 
-    List<OutboxMessage> findByProcessedFalse(Pageable pageable);
+    List<OutboxMessage> findByProcessedFalseAndRetryCountLessThan(int maxRetries, Pageable pageable);
 
     @Modifying
     @Query("UPDATE OutboxMessage o SET o.processed = true WHERE o.id IN :ids")
     void markAsProcessed(List<UUID> ids);
+
+    @Modifying
+    @Query("UPDATE OutboxMessage o SET o.retryCount = o.retryCount + 1, o.lastAttemptAt = CURRENT_TIMESTAMP WHERE o.id = :id")
+    void incrementRetryCount(UUID id);
 
 }

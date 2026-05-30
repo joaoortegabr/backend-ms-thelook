@@ -26,7 +26,7 @@ public class ImageTaskListener {
     }
 
     // Unificamos a lógica aqui. Remova os métodos receiveLowPriority antigos.
-    @RabbitListener(queues = "q.image.process.high", ackMode = "MANUAL")
+    @RabbitListener(queues = "q.image.process.high", ackMode = "MANUAL", containerFactory = "highPriorityContainerFactory")
     public void handleHighPriority(Map<String, Object> payload, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         try {
             System.out.println("Processando imagem de ALTA prioridade...");
@@ -38,7 +38,7 @@ public class ImageTaskListener {
         }
     }
 
-    @RabbitListener(queues = "q.image.process.low", ackMode = "MANUAL")
+    @RabbitListener(queues = "q.image.process.low", ackMode = "MANUAL", containerFactory = "lowPriorityContainerFactory")
     public void handleLowPriority(Map<String, Object> payload, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         try {
             System.out.println("Processando imagem de baixa prioridade...");

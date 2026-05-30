@@ -4,3 +4,8 @@ filters:
       retries: 3
       methods: GET
       statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+      backoff:
+        firstBackoff: 50ms
+        maxBackoff: 500ms
+        factor: 2
+        basedOnPreviousValue: false

@@ -1,13 +1,17 @@
 package com.thelook.ms_feed.services;
 
+import com.rabbitmq.client.Channel;
 import com.thelook.dtos.CreatorLifecycleEventDTO;
 import com.thelook.ms_feed.entities.OutfitDocument;
 import com.thelook.ms_feed.repositories.OutfitElasticRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -21,8 +25,10 @@ public class CreatorLifecycleListener {
         this.repository = repository;
     }
 
-    @RabbitListener(queues = "q.creator.lifecycle.feed")
-    public void handle(CreatorLifecycleEventDTO event) {
+    @RabbitListener(queues = "q.creator.lifecycle.feed", containerFactory = "lifecycleContainerFactory")
+    public void handle(CreatorLifecycleEventDTO event,
+                       Channel channel,
+                       @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         log.info("Recebido evento {} para creatorId={}", event.type(), event.creatorId());
         try {
             switch (event.type()) {
@@ -31,9 +37,10 @@ public class CreatorLifecycleListener {
                 case "PURGED"      -> repository.deleteByCreatorId(event.creatorId().toString());
                 default -> log.warn("Tipo de evento desconhecido: {}", event.type());
             }
+            channel.basicAck(tag, false);
         } catch (Exception e) {
             log.error("Falha ao processar evento {} para creatorId={}: {}", event.type(), event.creatorId(), e.getMessage(), e);
-            throw e;
+            channel.basicNack(tag, false, false);
         }
     }
 

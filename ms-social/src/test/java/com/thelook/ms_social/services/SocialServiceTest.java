@@ -214,4 +214,60 @@ class SocialServiceTest {
         verify(creatorNodeRepository, never()).unlike(any(), any());
         verify(valueOps, never()).decrement(anyString());
     }
+
+    // =========================================================
+    // Redis fallback (graceful degradation)
+    // =========================================================
+
+    @Test
+    void follow_redisDown_neo4jOperationSucceedsWithoutThrowingException() {
+        UUID creatorId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        when(creatorNodeRepository.isFollowing(creatorId, targetId)).thenReturn(false);
+        doThrow(new RuntimeException("Redis connection refused")).when(valueOps).increment(anyString());
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> socialService.follow(creatorId, targetId))
+                .doesNotThrowAnyException();
+
+        verify(creatorNodeRepository).follow(creatorId, targetId);
+    }
+
+    @Test
+    void unfollow_redisDown_neo4jOperationSucceedsWithoutThrowingException() {
+        UUID creatorId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        when(creatorNodeRepository.isFollowing(creatorId, targetId)).thenReturn(true);
+        doThrow(new RuntimeException("Redis connection refused")).when(valueOps).decrement(anyString());
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> socialService.unfollow(creatorId, targetId))
+                .doesNotThrowAnyException();
+
+        verify(creatorNodeRepository).unfollow(creatorId, targetId);
+    }
+
+    @Test
+    void likeOutfit_redisDown_neo4jOperationSucceedsWithoutThrowingException() {
+        UUID creatorId = UUID.randomUUID();
+        UUID outfitId = UUID.randomUUID();
+        when(creatorNodeRepository.isLiking(creatorId, outfitId)).thenReturn(false);
+        doThrow(new RuntimeException("Redis connection refused")).when(valueOps).increment(anyString());
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> socialService.likeOutfit(creatorId, outfitId))
+                .doesNotThrowAnyException();
+
+        verify(creatorNodeRepository).like(creatorId, outfitId);
+    }
+
+    @Test
+    void unlikeOutfit_redisDown_neo4jOperationSucceedsWithoutThrowingException() {
+        UUID creatorId = UUID.randomUUID();
+        UUID outfitId = UUID.randomUUID();
+        when(creatorNodeRepository.isLiking(creatorId, outfitId)).thenReturn(true);
+        doThrow(new RuntimeException("Redis connection refused")).when(valueOps).decrement(anyString());
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> socialService.unlikeOutfit(creatorId, outfitId))
+                .doesNotThrowAnyException();
+
+        verify(creatorNodeRepository).unlike(creatorId, outfitId);
+    }
 }

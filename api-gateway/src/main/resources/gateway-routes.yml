@@ -72,6 +72,11 @@ spring:
               args:
                 retries: 3
                 statuses: BAD_GATEWAY
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
             - name: CircuitBreaker
               args:
                 name: authCircuitBreaker
@@ -96,6 +101,11 @@ spring:
               args:
                 retries: 3
                 statuses: BAD_GATEWAY
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
             - name: CircuitBreaker
               args:
                 name: socialCircuitBreaker
@@ -121,6 +131,11 @@ spring:
               args:
                 retries: 3
                 statuses: BAD_GATEWAY
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
             - name: CircuitBreaker
               args:
                 name: creationCircuitBreaker
@@ -145,6 +160,11 @@ spring:
               args:
                 retries: 3
                 statuses: BAD_GATEWAY
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
             - name: CircuitBreaker
               args:
                 name: feedCircuitBreaker

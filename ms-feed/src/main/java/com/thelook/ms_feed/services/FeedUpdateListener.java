@@ -1,11 +1,16 @@
 package com.thelook.ms_feed.services;
 
+import com.rabbitmq.client.Channel;
 import com.thelook.dtos.ImageProcessedDTO;
 import com.thelook.ms_feed.repositories.OutfitElasticRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
+
+import java.io.IOException;
 
 @Service
 public class FeedUpdateListener {
@@ -18,8 +23,10 @@ public class FeedUpdateListener {
         this.elasticRepository = elasticRepository;
     }
 
-    @RabbitListener(queues = "q.image.status.updated.ms-feed")
-    public void handleFeedImageUpdate(ImageProcessedDTO dto) {
+    @RabbitListener(queues = "q.image.status.updated.ms-feed", containerFactory = "feedContainerFactory")
+    public void handleFeedImageUpdate(ImageProcessedDTO dto,
+                                      Channel channel,
+                                      @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         log.info("Recebido update de imagem para outfit {}: tipo={}", dto.outfitId(), dto.type());
         try {
             elasticRepository.findById(dto.outfitId().toString()).ifPresentOrElse(doc -> {
@@ -34,9 +41,10 @@ public class FeedUpdateListener {
                 elasticRepository.save(doc);
                 log.info("Outfit {} atualizado no indice", dto.outfitId());
             }, () -> log.warn("Outfit {} nao encontrado no indice para update de imagem", dto.outfitId()));
+            channel.basicAck(tag, false);
         } catch (Exception e) {
             log.error("Falha ao atualizar imagem do outfit {}: {}", dto.outfitId(), e.getMessage(), e);
-            throw e;
+            channel.basicNack(tag, false, false);
         }
     }
 

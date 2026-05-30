@@ -34,7 +34,7 @@ public class SocialService {
         }
 
         creatorNodeRepository.follow(creatorId, targetId);
-        redisTemplate.opsForValue().increment("followers:count:" + targetId);
+        safeIncrement("followers:count:" + targetId);
         log.info("Creator {} seguiu {}. Contador de seguidores de {} incrementado", creatorId, targetId, targetId);
     }
 
@@ -46,7 +46,7 @@ public class SocialService {
         }
 
         creatorNodeRepository.unfollow(creatorId, targetId);
-        redisTemplate.opsForValue().decrement("followers:count:" + targetId);
+        safeDecrement("followers:count:" + targetId);
         log.info("Creator {} deixou de seguir {}. Contador decrementado", creatorId, targetId);
     }
 
@@ -83,7 +83,7 @@ public class SocialService {
         }
 
         creatorNodeRepository.like(creatorId, outfitId);
-        redisTemplate.opsForValue().increment("likes:count:" + outfitId);
+        safeIncrement("likes:count:" + outfitId);
         log.info("Creator {} curtiu outfit {}. Contador incrementado", creatorId, outfitId);
     }
 
@@ -95,8 +95,24 @@ public class SocialService {
         }
 
         creatorNodeRepository.unlike(creatorId, outfitId);
-        redisTemplate.opsForValue().decrement("likes:count:" + outfitId);
+        safeDecrement("likes:count:" + outfitId);
         log.info("Creator {} removeu curtida do outfit {}. Contador decrementado", creatorId, outfitId);
+    }
+
+    private void safeIncrement(String key) {
+        try {
+            redisTemplate.opsForValue().increment(key);
+        } catch (Exception e) {
+            log.warn("Falha ao incrementar contador Redis '{}': {}", key, e.getMessage());
+        }
+    }
+
+    private void safeDecrement(String key) {
+        try {
+            redisTemplate.opsForValue().decrement(key);
+        } catch (Exception e) {
+            log.warn("Falha ao decrementar contador Redis '{}': {}", key, e.getMessage());
+        }
     }
 
 }

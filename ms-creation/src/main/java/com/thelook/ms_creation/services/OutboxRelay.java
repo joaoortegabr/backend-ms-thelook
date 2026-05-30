@@ -20,6 +20,7 @@ import java.util.UUID;
 public class OutboxRelay {
 
     private static final long OUTBOX_RELAY_DELAY_MS = 1000;
+    private static final int MAX_RETRIES = 5;
 
     private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
 
@@ -35,7 +36,7 @@ public class OutboxRelay {
     @Transactional
     public void publishMessages() {
         Pageable page = PageRequest.of(0, 100);
-        List<OutboxMessage> messages = outboxRepository.findByProcessedFalse(page);
+        List<OutboxMessage> messages = outboxRepository.findByProcessedFalseAndRetryCountLessThan(MAX_RETRIES, page);
         List<UUID> processedIds = new ArrayList<>();
 
         for (OutboxMessage message : messages) {
@@ -49,15 +50,22 @@ public class OutboxRelay {
             };
 
             if (routingKey == null) {
-                processedIds.add(message.getId()); // evita reprocessamento infinito de tipos inválidos
+                processedIds.add(message.getId());
                 continue;
             }
 
             try {
-                rabbitTemplate.convertAndSend("ex.thelook.outfit", routingKey, message.getPayload());
+                final String rk = routingKey;
+                rabbitTemplate.invoke(ops -> {
+                    ops.convertAndSend("ex.thelook.outfit", rk, message.getPayload());
+                    ops.waitForConfirmsOrDie(5000);
+                    return null;
+                });
                 processedIds.add(message.getId());
             } catch (Exception e) {
-                log.error("Falha ao enviar mensagem do Outbox {}: {}", message.getId(), e.getMessage(), e);
+                log.error("Falha ao enviar mensagem do Outbox {} (tentativa {}): {}",
+                        message.getId(), message.getRetryCount() + 1, e.getMessage(), e);
+                outboxRepository.incrementRetryCount(message.getId());
             }
         }
 
