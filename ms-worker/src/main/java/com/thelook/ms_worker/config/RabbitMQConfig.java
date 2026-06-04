@@ -4,6 +4,7 @@ import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplateCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -85,6 +86,7 @@ public class RabbitMQConfig {
         factory.setMaxConcurrentConsumers(8);
         factory.setPrefetchCount(4);
         factory.setTaskExecutor(executor);
+        factory.setObservationEnabled(true);
         return factory;
     }
 
@@ -103,6 +105,12 @@ public class RabbitMQConfig {
         factory.setMaxConcurrentConsumers(4);
         factory.setPrefetchCount(2);
         factory.setTaskExecutor(executor);
+        factory.setObservationEnabled(true);
         return factory;
+    }
+
+    @Bean
+    public RabbitTemplateCustomizer tracingRabbitTemplateCustomizer() {
+        return template -> template.setObservationEnabled(true);
     }
 }

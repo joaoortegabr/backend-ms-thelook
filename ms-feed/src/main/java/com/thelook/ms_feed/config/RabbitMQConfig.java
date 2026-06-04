@@ -60,6 +60,7 @@ public class RabbitMQConfig {
         factory.setMaxConcurrentConsumers(15);
         factory.setPrefetchCount(10);
         factory.setTaskExecutor(executor);
+        factory.setObservationEnabled(true);
         return factory;
     }
 
@@ -82,6 +83,7 @@ public class RabbitMQConfig {
         factory.setMaxConcurrentConsumers(5);
         factory.setPrefetchCount(5);
         factory.setTaskExecutor(executor);
+        factory.setObservationEnabled(true);
         return factory;
     }
 
