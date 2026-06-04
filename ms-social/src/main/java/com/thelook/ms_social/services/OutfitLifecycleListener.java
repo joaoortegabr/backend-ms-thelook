@@ -27,8 +27,14 @@ public class OutfitLifecycleListener {
     @RabbitListener(queues = "#{T(com.thelook.ms_social.config.RabbitMQConfig).QUEUE_OUTFIT_DELETED}")
     public void handleOutfitDeleted(OutfitDeletedDTO dto) {
         log.info("Removendo likes do outfit deletado: outfitId={}", dto.outfitId());
-        outfitNodeRepository.deleteWithRelationships(dto.outfitId());
-        redisTemplate.delete("likes:count:" + dto.outfitId());
-        log.info("Outfit {} removido do grafo e contador de likes deletado", dto.outfitId());
+        try {
+            outfitNodeRepository.deleteWithRelationships(dto.outfitId());
+            redisTemplate.delete("likes:count:" + dto.outfitId());
+            log.info("Outfit {} removido do grafo e contador de likes deletado", dto.outfitId());
+        } catch (Exception e) {
+            log.error("Falha ao processar deleção do outfit {}: {}. Mensagem será enviada para a DLQ.",
+                    dto.outfitId(), e.getMessage(), e);
+            throw e;
+        }
     }
 }

@@ -3,7 +3,9 @@ package com.thelook.ms_social.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -18,6 +20,10 @@ public class RabbitMQConfig {
     public static final String OUTFIT_EXCHANGE        = "ex.thelook.outfit";
     public static final String CREATOR_LIFECYCLE_KEY  = "creator.lifecycle";
     public static final String QUEUE_OUTFIT_DELETED   = "q.outfit.deleted.social";
+
+    // Dead-letter exchange e fila para mensagens que falharam no processamento
+    public static final String DLX_OUTFIT             = "ex.thelook.outfit.dlx";
+    public static final String DLQ_OUTFIT_DELETED     = "q.outfit.deleted.social.dlq";
 
     @Bean
     public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
@@ -37,8 +43,27 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public DirectExchange outfitDlx() {
+        return new DirectExchange(DLX_OUTFIT);
+    }
+
+    @Bean
+    public Queue outfitDeletedDlq() {
+        return new Queue(DLQ_OUTFIT_DELETED, true);
+    }
+
+    @Bean
+    public Binding bindOutfitDeletedDlq(Queue outfitDeletedDlq, DirectExchange outfitDlx) {
+        return BindingBuilder.bind(outfitDeletedDlq).to(outfitDlx).with(QUEUE_OUTFIT_DELETED);
+    }
+
+    @Bean
     public Queue outfitDeletedQueue() {
-        return new Queue(QUEUE_OUTFIT_DELETED, true);
+        // Requer que a fila anterior seja deletada no RabbitMQ para recriação com DLX
+        return QueueBuilder.durable(QUEUE_OUTFIT_DELETED)
+                .deadLetterExchange(DLX_OUTFIT)
+                .deadLetterRoutingKey(QUEUE_OUTFIT_DELETED)
+                .build();
     }
 
     @Bean

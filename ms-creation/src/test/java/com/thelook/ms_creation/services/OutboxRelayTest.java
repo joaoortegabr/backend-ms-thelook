@@ -2,6 +2,7 @@ package com.thelook.ms_creation.services;
 
 import com.thelook.ms_creation.entities.OutboxMessage;
 import com.thelook.ms_creation.repositories.OutboxRepository;
+import com.thelook.ms_creation.services.events.OutboxSavedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,7 @@ class OutboxRelayTest {
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of());
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         verify(rabbitTemplate, never()).invoke(any());
@@ -48,6 +50,7 @@ class OutboxRelayTest {
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         verify(rabbitTemplate).invoke(any());
@@ -61,6 +64,7 @@ class OutboxRelayTest {
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         verify(rabbitTemplate).invoke(any());
@@ -73,6 +77,7 @@ class OutboxRelayTest {
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         verify(rabbitTemplate).invoke(any());
@@ -86,6 +91,7 @@ class OutboxRelayTest {
                 .thenReturn(List.of(msg));
         when(rabbitTemplate.invoke(any())).thenThrow(new RuntimeException("RabbitMQ fora"));
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         verify(outboxRepository, never()).markAsProcessed(any());
@@ -101,6 +107,7 @@ class OutboxRelayTest {
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg1, msg2));
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         verify(rabbitTemplate, times(2)).invoke(any());
@@ -122,6 +129,7 @@ class OutboxRelayTest {
                 .thenReturn(null)
                 .thenThrow(new RuntimeException("falha na segunda"));
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         @SuppressWarnings("unchecked")
@@ -138,6 +146,7 @@ class OutboxRelayTest {
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 
+        outboxRelay.onOutboxSaved(new OutboxSavedEvent());
         outboxRelay.publishMessages();
 
         verify(rabbitTemplate, never()).invoke(any());

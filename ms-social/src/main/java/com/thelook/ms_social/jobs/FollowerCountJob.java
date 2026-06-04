@@ -6,11 +6,13 @@ import com.thelook.ms_social.repositories.CreatorNodeRepository;
 import com.thelook.ms_social.repositories.CreatorRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 public class FollowerCountJob {
 
     private static final Logger log = LoggerFactory.getLogger(FollowerCountJob.class);
+    private static final Duration REDIS_TTL = Duration.ofDays(2);
 
     private final CreatorNodeRepository creatorNodeRepository;
     private final CreatorRepository creatorRepository;
@@ -63,7 +66,16 @@ public class FollowerCountJob {
                         e -> "followers:count:" + e.getKey(),
                         e -> String.valueOf(e.getValue())
                 ));
-        redisTemplate.opsForValue().multiSet(redisMap);
+
+        long ttlSeconds = REDIS_TTL.getSeconds();
+        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            redisMap.forEach((key, value) -> {
+                byte[] rawKey = key.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                byte[] rawVal = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                connection.stringCommands().setEx(rawKey, ttlSeconds, rawVal);
+            });
+            return null;
+        });
 
         log.info("Recalculo de seguidores concluido: {}/{} registros processados", creators.size(), counts.size());
     }

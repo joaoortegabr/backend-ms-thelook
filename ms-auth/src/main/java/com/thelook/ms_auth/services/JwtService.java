@@ -24,8 +24,11 @@ public class JwtService {
     @Value("${jwt-token.refresh-expiration}")
     private long REFRESH_EXPIRATION_TIME;
 
+    private final String AUDIENCE_CONTROL = "thelook-api";
+
     public String generateToken(User user, String creatorId) {
         var builder = Jwts.builder()
+                .audience().add(AUDIENCE_CONTROL).and()
                 .subject(user.getUsername())
                 .claim("userId", user.getId().toString())
                 .claim("role", user.getRole().name())

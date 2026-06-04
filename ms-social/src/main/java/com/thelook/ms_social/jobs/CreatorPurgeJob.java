@@ -1,7 +1,6 @@
 package com.thelook.ms_social.jobs;
 
 import com.thelook.ms_social.entities.Creator;
-import com.thelook.exceptions.ResourceNotFoundException;
 import com.thelook.ms_social.repositories.CreatorRepository;
 import com.thelook.ms_social.services.CreatorEventPublisher;
 import com.thelook.ms_social.services.CreatorNodeService;
@@ -14,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class CreatorPurgeJob {
@@ -48,22 +48,30 @@ public class CreatorPurgeJob {
 
         log.info("Iniciando purga de {} creators expirados", expired.size());
 
-        for (Creator creator : expired) {
-            try {
-                creatorRepository.deleteById(creator.getId());
-                try {
-                    creatorNodeService.delete(creator.getId());
-                } catch (ResourceNotFoundException ignored) {
-                    // nó já removido no soft delete — comportamento esperado
-                }
-                redisTemplate.delete("followers:count:" + creator.getId());
-                creatorEventPublisher.publishPurged(creator.getId(), creator.getUserId());
-                log.info("Creator {} purgado permanentemente", creator.getId());
-            } catch (Exception e) {
-                log.error("Falha ao purgar creator {}: {}", creator.getId(), e.getMessage(), e);
-            }
+        List<UUID> expiredIds = expired.stream().map(Creator::getId).toList();
+
+        // 1 SQL DELETE IN (...) — substitui N deleteById individuais
+        creatorRepository.deleteAllByIdInBatch(expiredIds);
+
+        // 1 Cypher DETACH DELETE em batch — substitui N queries
+        try {
+            creatorNodeService.deleteAll(expiredIds);
+        } catch (Exception e) {
+            log.warn("Falha ao remover creators do grafo Neo4j durante purga: {}", e.getMessage(), e);
         }
 
-        log.info("Purga concluida: {}/{} creators removidos", expired.size(), expired.size());
+        // 1 Redis DEL com múltiplas chaves — substitui N deletes individuais
+        List<String> redisKeys = expiredIds.stream()
+                .map(id -> "followers:count:" + id)
+                .toList();
+        redisTemplate.delete(redisKeys);
+
+        // Publica evento PURGED por creator (necessário para payload com userId)
+        for (Creator creator : expired) {
+            creatorEventPublisher.publishPurged(creator.getId(), creator.getUserId());
+            log.info("Creator {} purgado permanentemente", creator.getId());
+        }
+
+        log.info("Purga concluida: {} creators removidos", expired.size());
     }
 }

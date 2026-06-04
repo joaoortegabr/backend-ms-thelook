@@ -1,13 +1,14 @@
 package com.thelook.ms_social.controllers;
 
-import com.thelook.ms_social.config.SecurityConfig;
+import com.thelook.GlobalExceptionHandler;
 import com.thelook.ms_social.services.SocialService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.context.annotation.Import;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.UUID;
 
@@ -16,12 +17,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(SocialController.class)
-@Import(SecurityConfig.class)
+@ExtendWith(MockitoExtension.class)
 class SocialControllerTest {
 
-    @Autowired MockMvc mockMvc;
-    @MockitoBean SocialService socialService;
+    @Mock SocialService socialService;
+
+    MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        SocialController controller = new SocialController(socialService);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
 
     // =========================================================
     // POST /follow/{targetId}

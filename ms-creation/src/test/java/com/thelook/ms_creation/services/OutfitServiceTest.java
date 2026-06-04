@@ -6,6 +6,7 @@ import com.thelook.dtos.OutfitSyncDTO;
 import com.thelook.enums.ImageProcessStatus;
 import com.thelook.exceptions.BusinessRuleException;
 import com.thelook.exceptions.ResourceNotFoundException;
+import com.thelook.ms_creation.entities.Item;
 import com.thelook.ms_creation.entities.Outfit;
 import com.thelook.ms_creation.entities.OutboxMessage;
 import com.thelook.ms_creation.models.dtos.ItemRequest;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -44,12 +46,13 @@ class OutfitServiceTest {
     @Mock ObjectMapper objectMapper;
     @Mock StorageService storageService;
     @Mock OutfitMapper outfitMapper;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     OutfitService outfitService;
 
     @BeforeEach
     void setUp() {
-        outfitService = new OutfitService(outfitRepository, outboxRepository, objectMapper, storageService, outfitMapper);
+        outfitService = new OutfitService(outfitRepository, outboxRepository, objectMapper, storageService, outfitMapper, eventPublisher);
     }
 
     // ── findById ──────────────────────────────────────────────────────────────
@@ -58,7 +61,7 @@ class OutfitServiceTest {
     void findById_quandoEncontrado_retornaOutfit() {
         UUID id = UUID.randomUUID();
         Outfit outfit = outfitWith(id, UUID.randomUUID());
-        when(outfitRepository.findById(id)).thenReturn(Optional.of(outfit));
+        when(outfitRepository.findWithItemsById(id)).thenReturn(Optional.of(outfit));
 
         Outfit result = outfitService.findById(id);
 
@@ -68,7 +71,7 @@ class OutfitServiceTest {
     @Test
     void findById_quandoNaoEncontrado_lancaResourceNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(outfitRepository.findById(id)).thenReturn(Optional.empty());
+        when(outfitRepository.findWithItemsById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> outfitService.findById(id))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -162,24 +165,28 @@ class OutfitServiceTest {
                 .hasMessageContaining("serializar");
     }
 
-    // ── delete ────────────────────────────────────────────────────────────────
+    // ── delete (soft) ─────────────────────────────────────────────────────────
 
     @Test
-    void delete_quandoProprietario_deletaOutfit() {
+    void delete_quandoProprietario_softDeleteOutfit() throws Exception {
         UUID outfitId = UUID.randomUUID();
         UUID creatorId = UUID.randomUUID();
         Outfit outfit = outfitWith(outfitId, creatorId);
-        when(outfitRepository.findById(outfitId)).thenReturn(Optional.of(outfit));
+        when(outfitRepository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"id\":\"test\"}");
 
         outfitService.delete(outfitId, creatorId);
 
-        verify(outfitRepository).delete(outfit);
+        assertThat(outfit.getIsActive()).isFalse();
+        assertThat(outfit.getDeletedAt()).isNotNull();
+        verify(outfitRepository).save(outfit);
+        verify(outfitRepository, never()).delete(any());
     }
 
     @Test
     void delete_quandoNaoEncontrado_lancaResourceNotFoundException() {
         UUID outfitId = UUID.randomUUID();
-        when(outfitRepository.findById(outfitId)).thenReturn(Optional.empty());
+        when(outfitRepository.findWithItemsById(outfitId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> outfitService.delete(outfitId, UUID.randomUUID()))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -189,9 +196,53 @@ class OutfitServiceTest {
     void delete_quandoNaoProprietario_lancaBusinessRuleException() {
         UUID outfitId = UUID.randomUUID();
         Outfit outfit = outfitWith(outfitId, UUID.randomUUID());
-        when(outfitRepository.findById(outfitId)).thenReturn(Optional.of(outfit));
+        when(outfitRepository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
 
         assertThatThrownBy(() -> outfitService.delete(outfitId, UUID.randomUUID()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("negado");
+    }
+
+    // ── hardDelete ────────────────────────────────────────────────────────────
+
+    @Test
+    void hardDelete_quandoProprietario_deletaPermanentementeELimpaStorage() throws Exception {
+        UUID outfitId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        Outfit outfit = outfitWith(outfitId, creatorId);
+        outfit.setImage1Url("path/img1.jpg");
+        outfit.setImage2Url("path/img2.jpg");
+        Item item = new Item();
+        item.setItemImg("path/item.jpg");
+        outfit.addItem(item);
+        when(outfitRepository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"id\":\"test\"}");
+
+        outfitService.hardDelete(outfitId, creatorId);
+
+        verify(storageService).deleteImage("path/img1.jpg");
+        verify(storageService).deleteImage("path/img2.jpg");
+        verify(storageService).deleteImage("path/item.jpg");
+        verify(outfitRepository).delete(outfit);
+        verify(outfitRepository, never()).save(any());
+    }
+
+    @Test
+    void hardDelete_quandoNaoEncontrado_lancaResourceNotFoundException() {
+        UUID outfitId = UUID.randomUUID();
+        when(outfitRepository.findWithItemsById(outfitId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> outfitService.hardDelete(outfitId, UUID.randomUUID()))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void hardDelete_quandoNaoProprietario_lancaBusinessRuleException() {
+        UUID outfitId = UUID.randomUUID();
+        Outfit outfit = outfitWith(outfitId, UUID.randomUUID());
+        when(outfitRepository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
+
+        assertThatThrownBy(() -> outfitService.hardDelete(outfitId, UUID.randomUUID()))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("negado");
     }

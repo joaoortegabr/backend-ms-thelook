@@ -16,7 +16,9 @@ import com.thelook.ms_creation.models.mappers.OutfitMapper;
 import com.thelook.ms_creation.repositories.ItemRepository;
 import com.thelook.ms_creation.repositories.OutboxRepository;
 import com.thelook.ms_creation.repositories.OutfitRepository;
+import com.thelook.ms_creation.services.events.OutboxSavedEvent;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,6 +34,7 @@ public class ItemService {
     private final ItemMapper itemMapper;
     private final OutfitMapper outfitMapper;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ItemService(ItemRepository itemRepository,
                        OutfitRepository outfitRepository,
@@ -39,7 +42,8 @@ public class ItemService {
                        StorageService storageService,
                        ItemMapper itemMapper,
                        OutfitMapper outfitMapper,
-                       ObjectMapper objectMapper) {
+                       ObjectMapper objectMapper,
+                       ApplicationEventPublisher eventPublisher) {
         this.itemRepository = itemRepository;
         this.outfitRepository = outfitRepository;
         this.outboxRepository = outboxRepository;
@@ -47,6 +51,7 @@ public class ItemService {
         this.itemMapper = itemMapper;
         this.outfitMapper = outfitMapper;
         this.objectMapper = objectMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -102,6 +107,25 @@ public class ItemService {
         publishOutfitUpdated(outfit);
     }
 
+    @Transactional
+    public void hardDeleteItem(UUID outfitId, UUID itemId, UUID creatorId) {
+        Item item = itemRepository.findWithOutfitById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException(itemId));
+
+        Outfit outfit = item.getOutfit();
+
+        if (!outfit.getId().equals(outfitId))
+            throw new BusinessRuleException("Item não pertence a este look");
+
+        if (!outfit.getCreatorId().equals(creatorId))
+            throw new BusinessRuleException("Acesso negado para modificar este look");
+
+        storageService.deleteImage(item.getItemImg());
+        itemRepository.delete(item);
+
+        publishOutfitUpdated(outfit);
+    }
+
     private void publishOutfitUpdated(Outfit outfit) {
         OutfitSyncDTO syncDto = outfitMapper.toOutfitSyncDTO(outfit);
         OutboxMessage message = new OutboxMessage();
@@ -113,5 +137,6 @@ public class ItemService {
             throw new BusinessRuleException("Erro ao serializar evento de atualizacao: " + e.getMessage());
         }
         outboxRepository.save(message);
+        eventPublisher.publishEvent(new OutboxSavedEvent());
     }
 }

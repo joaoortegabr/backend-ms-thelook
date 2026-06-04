@@ -7,6 +7,7 @@ import com.thelook.ms_social.repositories.CreatorNodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -30,5 +31,12 @@ public class CreatorNodeService {
             throw new ResourceNotFoundException("Creator not found");
 
         creatorNodeRepository.deepDeleteCreator(creatorId);
+    }
+
+    @Transactional(transactionManager = "neo4jTransactionManager")
+    public void deleteAll(List<UUID> ids) {
+        if (!ids.isEmpty()) {
+            creatorNodeRepository.deepDeleteCreators(ids);
+        }
     }
 }

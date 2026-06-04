@@ -136,7 +136,7 @@ class FeedServiceTest {
     void searchFeed_comLastSortValues_delegaParaElasticsearch() {
         mockSearchHits();
 
-        feedService.searchFeed(null, null, null, null, 20, List.of("2024-01-01T10:00:00", "abc123"));
+        feedService.searchFeed(null, null, null, null, 20, List.of(String.valueOf(System.currentTimeMillis()), UUID.randomUUID().toString()));
 
         verify(elasticsearchOperations).search(any(Query.class), eq(OutfitDocument.class));
     }
@@ -154,7 +154,6 @@ class FeedServiceTest {
     @SuppressWarnings("unchecked")
     private SearchHits<OutfitDocument> mockSearchHits() {
         SearchHits<OutfitDocument> mockHits = mock(SearchHits.class);
-        when(mockHits.getSearchHits()).thenReturn(List.of());
         when(elasticsearchOperations.search(any(Query.class), eq(OutfitDocument.class))).thenReturn(mockHits);
         return mockHits;
     }

@@ -74,6 +74,18 @@ public class OutfitController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{outfitId}/hard")
+    public ResponseEntity<Void> hardDeleteOutfit(
+            @RequestHeader(name = "X-Creator-Id") UUID creatorId,
+            @PathVariable UUID outfitId) {
+
+        if (creatorId == null)
+            throw new IncompleteProfileException("You must complete your profile before managing outfits");
+
+        outfitService.hardDelete(outfitId, creatorId);
+        return ResponseEntity.noContent().build();
+    }
+
     // --- Item endpoints ---
 
     @PostMapping(value = "/{outfitId}/items", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -106,6 +118,19 @@ public class OutfitController {
             throw new IncompleteProfileException("You must complete your profile before managing outfits");
 
         itemService.deleteItem(outfitId, itemId, creatorId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{outfitId}/items/{itemId}/hard")
+    public ResponseEntity<Void> hardDeleteItem(
+            @RequestHeader(name = "X-Creator-Id") UUID creatorId,
+            @PathVariable UUID outfitId,
+            @PathVariable UUID itemId) {
+
+        if (creatorId == null)
+            throw new IncompleteProfileException("You must complete your profile before managing outfits");
+
+        itemService.hardDeleteItem(outfitId, itemId, creatorId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE tb_outfit ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;

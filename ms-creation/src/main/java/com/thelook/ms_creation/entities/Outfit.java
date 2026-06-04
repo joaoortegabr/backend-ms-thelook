@@ -52,6 +52,7 @@ public class Outfit {
     private ImageProcessStatus imageStatus;
     @Column(nullable = false)
     private boolean isActive = true;
+    private LocalDateTime deletedAt;
     @CreationTimestamp
     private LocalDateTime createdAt;
 
@@ -153,6 +154,14 @@ public class Outfit {
 
     public void setIsActive(boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -1,6 +1,8 @@
 package com.thelook.ms_social.repositories;
 
 import com.thelook.ms_social.entities.Creator;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -30,7 +32,11 @@ public interface CreatorRepository extends JpaRepository<Creator, UUID> {
     @Query("UPDATE Creator c SET c.followersCount = :count WHERE c.id = :creatorId")
     void updateFollowerCount(UUID creatorId, long count);
 
-    @Query("SELECT c.id, c.followersCount FROM Creator c WHERE c.isActive = true AND c.followersCount > 0")
-    List<Object[]> findActiveFollowerCounts();
+    @Query("SELECT c.id AS id, c.followersCount AS followersCount FROM Creator c WHERE c.isActive = true AND c.followersCount > 0")
+    Page<CreatorFollowerProjection> findActiveFollowerCounts(Pageable pageable);
 
+    interface CreatorFollowerProjection {
+        UUID getId();
+        Long getFollowersCount();
+    }
 }

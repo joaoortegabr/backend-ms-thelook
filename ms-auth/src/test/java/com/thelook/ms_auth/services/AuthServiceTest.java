@@ -46,7 +46,7 @@ class AuthServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(authService, "EXPIRATION_TIME", 900_000L);
         ReflectionTestUtils.setField(authService, "REFRESH_EXPIRATION_TIME", 7_200_000L);
-        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 
     private User savedUser(String username) {
@@ -233,10 +233,12 @@ class AuthServiceTest {
 
         when(jwtService.isTokenValid(refreshToken)).thenReturn(true);
         when(jwtService.isRefreshToken(refreshToken)).thenReturn(true);
+        when(jwtService.extractExpiration(refreshToken)).thenReturn(new Date(System.currentTimeMillis() + 7_200_000));
         when(jwtService.extractUsername(refreshToken)).thenReturn("alice");
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(valueOps.get("user:profile:" + user.getId())).thenReturn(creatorId);
         when(jwtService.generateToken(user, creatorId)).thenReturn("new.access.token");
+        when(jwtService.generateRefreshToken(user)).thenReturn("new.refresh.token");
 
         RefreshResponse response = authService.refresh(refreshToken);
 
@@ -252,10 +254,12 @@ class AuthServiceTest {
 
         when(jwtService.isTokenValid(refreshToken)).thenReturn(true);
         when(jwtService.isRefreshToken(refreshToken)).thenReturn(true);
+        when(jwtService.extractExpiration(refreshToken)).thenReturn(new Date(System.currentTimeMillis() + 7_200_000));
         when(jwtService.extractUsername(refreshToken)).thenReturn("alice");
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(valueOps.get("user:profile:" + user.getId())).thenReturn(null);
         when(jwtService.generateToken(user, null)).thenReturn("new.access.token");
+        when(jwtService.generateRefreshToken(user)).thenReturn("new.refresh.token");
 
         authService.refresh(refreshToken);
 
@@ -290,6 +294,7 @@ class AuthServiceTest {
 
         when(jwtService.isTokenValid(refreshToken)).thenReturn(true);
         when(jwtService.isRefreshToken(refreshToken)).thenReturn(true);
+        when(jwtService.extractExpiration(refreshToken)).thenReturn(new Date(System.currentTimeMillis() + 7_200_000));
         when(jwtService.extractUsername(refreshToken)).thenReturn("ghost");
         when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 

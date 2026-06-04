@@ -25,7 +25,7 @@ public class InternalSecretFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/actuator/");
+        return path.equals("/actuator/health") || path.equals("/actuator/info");
     }
 
     @Override

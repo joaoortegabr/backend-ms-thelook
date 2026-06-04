@@ -20,6 +20,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class JwtAuthenticationFilterGatewayFilterFactory
@@ -82,10 +83,11 @@ public class JwtAuthenticationFilterGatewayFilterFactory
                             }
 
                             return redisOps.opsForValue().get("user:profile:" + userId)
-                                    .flatMap(creatorIdFromRedis ->
-                                            proceedWithHeaders(exchange, chain::filter, userId, username, role, creatorIdFromRedis))
-                                    .switchIfEmpty(Mono.defer(() ->
-                                            proceedWithHeaders(exchange, chain::filter, userId, username, role, null)));
+                                    .map(Optional::of)
+                                    .defaultIfEmpty(Optional.empty())
+                                    .flatMap(optCreatorId ->
+                                            proceedWithHeaders(exchange, chain::filter, userId, username, role,
+                                                    optCreatorId.orElse(null)));
                         })
                         .onErrorResume(UnauthorizedException.class, Mono::error)
                         .onErrorResume(e -> {

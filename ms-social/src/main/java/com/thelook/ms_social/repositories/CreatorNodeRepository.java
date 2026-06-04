@@ -56,4 +56,7 @@ public interface CreatorNodeRepository extends Neo4jRepository<CreatorNode, UUID
 
     @Query("MATCH (c:Creator {creatorId: $creatorId}) DETACH DELETE c")
     void deepDeleteCreator(UUID creatorId);
+
+    @Query("MATCH (c:Creator) WHERE c.creatorId IN $ids DETACH DELETE c")
+    void deepDeleteCreators(List<UUID> ids);
 }

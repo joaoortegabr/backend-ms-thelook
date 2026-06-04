@@ -8,7 +8,9 @@ import com.thelook.dtos.ItemSyncDTO;
 import com.thelook.enums.ImageProcessStatus;
 
 public record OutfitSyncDTO(
+        @NotNull
         UUID outfitId,
+        @NotNull
         UUID creatorId,
         String title,
         String image1Url,

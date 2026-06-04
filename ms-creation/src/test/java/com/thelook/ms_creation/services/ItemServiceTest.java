@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.Optional;
@@ -49,13 +50,14 @@ class ItemServiceTest {
     @Mock ItemMapper itemMapper;
     @Mock OutfitMapper outfitMapper;
     @Mock ObjectMapper objectMapper;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     ItemService itemService;
 
     @BeforeEach
     void setUp() {
         itemService = new ItemService(itemRepository, outfitRepository, outboxRepository,
-                storageService, itemMapper, outfitMapper, objectMapper);
+                storageService, itemMapper, outfitMapper, objectMapper, eventPublisher);
     }
 
     // ── addItem ────────────────────────────────────────────────────────────────
@@ -213,6 +215,64 @@ class ItemServiceTest {
         itemService.deleteItem(outfitId, itemId, creatorId);
 
         verify(outfitRepository).save(outfit);
+        ArgumentCaptor<OutboxMessage> captor = ArgumentCaptor.forClass(OutboxMessage.class);
+        verify(outboxRepository).save(captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo("OUTFIT_UPDATED");
+    }
+
+    // ── hardDeleteItem ─────────────────────────────────────────────────────────
+
+    @Test
+    void hardDeleteItem_itemNotFound_throwsResourceNotFoundException() {
+        when(itemRepository.findWithOutfitById(any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> itemService.hardDeleteItem(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verifyNoInteractions(outboxRepository);
+    }
+
+    @Test
+    void hardDeleteItem_outfitMismatch_throwsBusinessRuleException() {
+        UUID outfitId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        Outfit wrongOutfit = outfitWith(UUID.randomUUID(), UUID.randomUUID());
+        Item item = itemWithOutfit(itemId, wrongOutfit);
+        when(itemRepository.findWithOutfitById(itemId)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> itemService.hardDeleteItem(outfitId, itemId, UUID.randomUUID()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("pertence");
+    }
+
+    @Test
+    void hardDeleteItem_notOwner_throwsBusinessRuleException() {
+        UUID outfitId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        Outfit outfit = outfitWith(outfitId, UUID.randomUUID());
+        Item item = itemWithOutfit(itemId, outfit);
+        when(itemRepository.findWithOutfitById(itemId)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> itemService.hardDeleteItem(outfitId, itemId, UUID.randomUUID()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("negado");
+    }
+
+    @Test
+    void hardDeleteItem_sucesso_deletaItemDiretamenteELimpaStorage() throws Exception {
+        UUID outfitId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        Outfit outfit = outfitWith(outfitId, creatorId);
+        Item item = itemWithOutfit(itemId, outfit);
+        item.setItemImg("path/item.jpg");
+        stubPublishDependencies(outfitId);
+        when(itemRepository.findWithOutfitById(itemId)).thenReturn(Optional.of(item));
+
+        itemService.hardDeleteItem(outfitId, itemId, creatorId);
+
+        verify(storageService).deleteImage("path/item.jpg");
+        verify(itemRepository).delete(item);
         ArgumentCaptor<OutboxMessage> captor = ArgumentCaptor.forClass(OutboxMessage.class);
         verify(outboxRepository).save(captor.capture());
         assertThat(captor.getValue().getType()).isEqualTo("OUTFIT_UPDATED");

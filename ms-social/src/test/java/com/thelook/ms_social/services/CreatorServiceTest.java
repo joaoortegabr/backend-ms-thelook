@@ -6,7 +6,8 @@ import com.thelook.ms_social.entities.Creator;
 import com.thelook.ms_social.models.dtos.CreatorRequest;
 import com.thelook.ms_social.models.dtos.CreatorUpdateRequest;
 import com.thelook.ms_social.repositories.CreatorRepository;
-import com.thelook.ms_social.services.CreatorEventPublisher;
+import com.thelook.ms_social.services.events.CreatorPersistEvent;
+import com.thelook.ms_social.services.events.CreatorRemoveFromGraphEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -27,22 +29,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CreatorServiceTest {
 
-    @Mock private CreatorNodeService creatorNodeService;
     @Mock private CreatorRepository creatorRepository;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
     @Mock private CreatorEventPublisher creatorEventPublisher;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private CreatorService creatorService;
 
     @BeforeEach
     void setUp() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 
     private Creator creator(UUID id, UUID userId) {
@@ -89,7 +92,7 @@ class CreatorServiceTest {
     // =========================================================
 
     @Test
-    void create_success_savesToPostgresNeo4jAndRedis() {
+    void create_success_savesToPostgresPublishesGraphEventAndRedis() {
         UUID userId = UUID.randomUUID();
 
         doAnswer(inv -> {
@@ -106,20 +109,20 @@ class CreatorServiceTest {
         assertThat(captor.getValue().getName()).isEqualTo("Alice");
         assertThat(captor.getValue().getIsActive()).isTrue();
 
-        verify(creatorNodeService).save(any(Creator.class));
+        verify(eventPublisher).publishEvent(any(CreatorPersistEvent.class));
         verify(valueOps).set(eq("user:profile:" + userId), anyString(), eq(Duration.ofDays(90)));
         assertThat(result.getUserId()).isEqualTo(userId);
     }
 
     @Test
-    void create_repositoryThrows_throwsBusinessRuleException() {
+    void create_repositoryThrows_throwsBusinessRuleExceptionWithoutPublishingGraphEvent() {
         UUID userId = UUID.randomUUID();
         when(creatorRepository.save(any())).thenThrow(new RuntimeException("constraint violation"));
 
         assertThatThrownBy(() -> creatorService.create(userId, request()))
                 .isInstanceOf(BusinessRuleException.class);
 
-        verify(creatorNodeService, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(CreatorPersistEvent.class));
     }
 
     // =========================================================
@@ -184,7 +187,7 @@ class CreatorServiceTest {
     // =========================================================
 
     @Test
-    void delete_success_softDeleteERetornaMensagem() {
+    void delete_success_softDeletePublishesGraphRemovalEventERetornaMensagem() {
         UUID creatorId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Creator existing = creator(creatorId, userId);
@@ -199,7 +202,7 @@ class CreatorServiceTest {
         verify(creatorRepository, never()).deleteById(any());
         verify(redisTemplate).delete("user:profile:" + userId);
         verify(redisTemplate).delete("followers:count:" + creatorId);
-        verify(creatorNodeService).delete(creatorId);
+        verify(eventPublisher).publishEvent(any(CreatorRemoveFromGraphEvent.class));
         verify(creatorEventPublisher).publishDeactivated(creatorId);
         assertThat(result).contains("desativada");
     }
@@ -217,11 +220,44 @@ class CreatorServiceTest {
     }
 
     // =========================================================
+    // hardDelete
+    // =========================================================
+
+    @Test
+    void hardDelete_success_deletesFromRepositoryPublishesGraphRemovalEventAndClearsRedis() {
+        UUID creatorId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Creator existing = creator(creatorId, userId);
+
+        when(creatorRepository.findIdByCreatorId(creatorId)).thenReturn(Optional.of(existing));
+
+        creatorService.hardDelete(creatorId);
+
+        verify(creatorRepository).delete(existing);
+        verify(creatorRepository, never()).save(any());
+        verify(redisTemplate).delete("user:profile:" + userId);
+        verify(redisTemplate).delete("followers:count:" + creatorId);
+        verify(eventPublisher).publishEvent(any(CreatorRemoveFromGraphEvent.class));
+        verify(creatorEventPublisher).publishDeactivated(creatorId);
+    }
+
+    @Test
+    void hardDelete_creatorNotFound_throwsResourceNotFoundException() {
+        UUID creatorId = UUID.randomUUID();
+        when(creatorRepository.findIdByCreatorId(creatorId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> creatorService.hardDelete(creatorId))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(creatorRepository, never()).delete(any());
+    }
+
+    // =========================================================
     // reactivate
     // =========================================================
 
     @Test
-    void reactivate_contaInativa_reativaERetornaCreator() {
+    void reactivate_contaInativa_reativaPublishesGraphEventERetornaCreator() {
         UUID userId = UUID.randomUUID();
         Creator existing = creator(UUID.randomUUID(), userId);
         existing.setIsActive(false);
@@ -234,7 +270,7 @@ class CreatorServiceTest {
 
         assertThat(result.getIsActive()).isTrue();
         assertThat(result.getDeletedAt()).isNull();
-        verify(creatorNodeService).save(existing);
+        verify(eventPublisher).publishEvent(any(CreatorPersistEvent.class));
         verify(valueOps).set(eq("user:profile:" + userId), anyString(), eq(Duration.ofDays(90)));
         verify(creatorEventPublisher).publishReactivated(existing.getId());
     }

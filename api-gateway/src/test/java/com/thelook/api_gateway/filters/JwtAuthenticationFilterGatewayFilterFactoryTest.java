@@ -71,19 +71,19 @@ class JwtAuthenticationFilterGatewayFilterFactoryTest {
     @Test
     void publicPath_noToken_passesThrough() {
         ServerWebExchange ex = exchange("/api/v1/auth/login", null);
-        when(chain.filter(ex)).thenReturn(Mono.empty());
+        when(chain.filter(any())).thenReturn(Mono.empty());
 
         StepVerifier.create(filter().filter(ex, chain))
                 .verifyComplete();
 
-        verify(chain).filter(ex);
+        verify(chain).filter(any());
         verifyNoInteractions(jwtService);
     }
 
     @Test
     void publicPath_refreshEndpoint_passesThrough() {
         ServerWebExchange ex = exchange("/api/v1/auth/refresh", null);
-        when(chain.filter(ex)).thenReturn(Mono.empty());
+        when(chain.filter(any())).thenReturn(Mono.empty());
 
         StepVerifier.create(filter().filter(ex, chain))
                 .verifyComplete();

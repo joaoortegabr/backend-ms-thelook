@@ -28,6 +28,9 @@ public class LocalStorageProvider implements StorageProvider {
             Files.createDirectories(directory);
 
             String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
+            if (extension == null || extension.isBlank()) {
+                throw new StorageException("Arquivo sem extensão não é permitido");
+            }
             Path filePath = directory.resolve(fileName + "." + extension).normalize();
 
             if (!filePath.startsWith(root)) {
@@ -45,7 +48,11 @@ public class LocalStorageProvider implements StorageProvider {
     @Override
     public void delete(String path) {
         try {
-            Files.deleteIfExists(Paths.get(path));
+            Path filePath = root.resolve(path).normalize();
+            if (!filePath.startsWith(root)) {
+                throw new SecurityException("Path traversal detectado ao deletar: " + path);
+            }
+            Files.deleteIfExists(filePath);
         } catch (IOException e) {
             throw new StorageException("Failed to delete local file: " + path, e);
         }

@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,7 +28,7 @@ class SocialServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOps);
     }
 
     // =========================================================
@@ -44,6 +45,7 @@ class SocialServiceTest {
 
         verify(creatorNodeRepository).follow(creatorId, targetId);
         verify(valueOps).increment("followers:count:" + targetId);
+        verify(redisTemplate).expire(eq("followers:count:" + targetId), any(Duration.class));
     }
 
     @Test
@@ -83,6 +85,7 @@ class SocialServiceTest {
 
         verify(creatorNodeRepository).unfollow(creatorId, targetId);
         verify(valueOps).decrement("followers:count:" + targetId);
+        verify(redisTemplate).expire(eq("followers:count:" + targetId), any(Duration.class));
     }
 
     @Test
@@ -173,6 +176,7 @@ class SocialServiceTest {
 
         verify(creatorNodeRepository).like(creatorId, outfitId);
         verify(valueOps).increment("likes:count:" + outfitId);
+        verify(redisTemplate).expire(eq("likes:count:" + outfitId), any(Duration.class));
     }
 
     @Test
@@ -201,6 +205,7 @@ class SocialServiceTest {
 
         verify(creatorNodeRepository).unlike(creatorId, outfitId);
         verify(valueOps).decrement("likes:count:" + outfitId);
+        verify(redisTemplate).expire(eq("likes:count:" + outfitId), any(Duration.class));
     }
 
     @Test

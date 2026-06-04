@@ -59,6 +59,13 @@ public class CreatorController {
         return ResponseEntity.ok().body(response);
     }
 
+    @DeleteMapping("/hard")
+    public ResponseEntity<Void> hardDelete(
+            @RequestHeader(name = "X-Creator-Id") UUID creatorId) {
+        creatorService.hardDelete(creatorId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/reactivate")
     public ResponseEntity<CreatorResponse> reactivate(
             @RequestHeader(name = "X-User-Id") UUID userId) {

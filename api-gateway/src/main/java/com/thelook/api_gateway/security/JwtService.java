@@ -16,12 +16,15 @@ public class JwtService {
     @Value("${jwt-token.secret}")
     private String SECRET_KEY;
 
+    private final String AUDIENCE_CONTROL = "thelook-api";
+
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(Decoders.BASE64URL.decode(SECRET_KEY));
     }
 
     public Claims extractClaims(String token) {
         return Jwts.parser()
+                .requireAudience(AUDIENCE_CONTROL)
                 .verifyWith(getKey())
                 .build()
                 .parseSignedClaims(token)

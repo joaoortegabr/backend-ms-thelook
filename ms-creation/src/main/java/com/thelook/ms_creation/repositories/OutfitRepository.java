@@ -19,11 +19,11 @@ public interface OutfitRepository extends JpaRepository<Outfit, UUID> {
     Optional<Outfit> findWithItemsById(UUID id);
 
     @Modifying
-    @Query("UPDATE Outfit o SET o.isActive = false WHERE o.creatorId = :creatorId")
+    @Query("UPDATE Outfit o SET o.isActive = false, o.deletedAt = CURRENT_TIMESTAMP WHERE o.creatorId = :creatorId")
     void deactivateByCreatorId(UUID creatorId);
 
     @Modifying
-    @Query("UPDATE Outfit o SET o.isActive = true WHERE o.creatorId = :creatorId")
+    @Query("UPDATE Outfit o SET o.isActive = true, o.deletedAt = null WHERE o.creatorId = :creatorId")
     void reactivateByCreatorId(UUID creatorId);
 
     @Query("SELECT DISTINCT o FROM Outfit o LEFT JOIN FETCH o.items WHERE o.creatorId = :creatorId")

@@ -29,6 +29,7 @@ class JwtServiceTest {
     private String buildToken(String username, String userId, String role, String creatorId, long expirationMs) {
         var builder = Jwts.builder()
                 .subject(username)
+                .audience().add("thelook-api").and()
                 .claim("userId", userId)
                 .claim("role", role)
                 .issuedAt(new Date())

@@ -2,6 +2,7 @@ package com.thelook;
 
 import com.thelook.exceptions.BusinessRuleException;
 import com.thelook.exceptions.IncompleteProfileException;
+import com.thelook.exceptions.InvalidAccessTokenException;
 import com.thelook.exceptions.ResourceNotFoundException;
 import com.thelook.exceptions.StorageException;
 import com.thelook.exceptions.StandardError;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -27,6 +29,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<StandardError> handleResourceNotFound(ResourceNotFoundException e, HttpServletRequest request) {
         String error  = "Resource not found";
         HttpStatus status = HttpStatus.NOT_FOUND;
+        StandardError err = new StandardError(Instant.now(), status.value(), error, e.getMessage(), request.getRequestURI());
+        return ResponseEntity.status(status).body(err);
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<StandardError> handleMissingHeader(MissingRequestHeaderException e, HttpServletRequest request) {
+        String error = "Missing required header";
+        HttpStatus status = HttpStatus.BAD_REQUEST;
         StandardError err = new StandardError(Instant.now(), status.value(), error, e.getMessage(), request.getRequestURI());
         return ResponseEntity.status(status).body(err);
     }
@@ -59,6 +69,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<StandardError> handleUnprocessableRequestException(UnprocessableRequestException e, HttpServletRequest request) {
         String error  = "Not possible to execute this request";
         HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+        StandardError err = new StandardError(Instant.now(), status.value(), error, e.getMessage(), request.getRequestURI());
+        return ResponseEntity.status(status).body(err);
+    }
+
+    @ExceptionHandler(InvalidAccessTokenException.class)
+    public ResponseEntity<StandardError> handleInvalidAccessToken(InvalidAccessTokenException e, HttpServletRequest request) {
+        String error = "Invalid or expired token";
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
         StandardError err = new StandardError(Instant.now(), status.value(), error, e.getMessage(), request.getRequestURI());
         return ResponseEntity.status(status).body(err);
     }

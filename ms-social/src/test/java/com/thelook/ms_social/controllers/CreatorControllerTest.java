@@ -1,21 +1,23 @@
 package com.thelook.ms_social.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.thelook.GlobalExceptionHandler;
 import com.thelook.exceptions.ResourceNotFoundException;
-import com.thelook.ms_social.config.SecurityConfig;
 import com.thelook.ms_social.entities.Creator;
 import com.thelook.ms_social.models.dtos.CreatorRequest;
 import com.thelook.ms_social.models.dtos.CreatorResponse;
 import com.thelook.ms_social.models.dtos.CreatorUpdateRequest;
 import com.thelook.ms_social.models.mappers.CreatorMapper;
 import com.thelook.ms_social.services.CreatorService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.context.annotation.Import;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -26,14 +28,22 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(CreatorController.class)
-@Import(SecurityConfig.class)
+@ExtendWith(MockitoExtension.class)
 class CreatorControllerTest {
 
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper objectMapper;
-    @MockitoBean CreatorService creatorService;
-    @MockitoBean CreatorMapper mapper;
+    @Mock CreatorService creatorService;
+    @Mock CreatorMapper mapper;
+
+    MockMvc mockMvc;
+    ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    @BeforeEach
+    void setUp() {
+        CreatorController controller = new CreatorController(creatorService, mapper);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
 
     private CreatorResponse response(UUID id) {
         return new CreatorResponse(id, "Alice", null, "Bio", "alice_ig",
@@ -159,7 +169,7 @@ class CreatorControllerTest {
         Creator creator = new Creator();
         creator.setId(creatorId);
         CreatorResponse response = response(creatorId);
-        CreatorUpdateRequest req = new CreatorUpdateRequest("new-avatar", "new bio", "new_ig", "SP", "SP");
+        CreatorUpdateRequest req = new CreatorUpdateRequest("https://cdn.example.com/avatar.jpg", "new bio", "new_ig", "SP", "SP");
 
         when(creatorService.update(eq(creatorId), any())).thenReturn(creator);
         when(mapper.toCreatorResponse(creator)).thenReturn(response);
@@ -198,6 +208,54 @@ class CreatorControllerTest {
     @Test
     void delete_missingCreatorIdHeader_returns4xx() throws Exception {
         mockMvc.perform(delete("/api/v1/creators"))
+                .andExpect(status().is4xxClientError());
+    }
+
+    // =========================================================
+    // DELETE /hard
+    // =========================================================
+
+    @Test
+    void hardDelete_validCreatorId_returns204() throws Exception {
+        UUID creatorId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/v1/creators/hard")
+                        .header("X-Creator-Id", creatorId.toString()))
+                .andExpect(status().isNoContent());
+
+        verify(creatorService).hardDelete(creatorId);
+    }
+
+    @Test
+    void hardDelete_missingCreatorIdHeader_returns4xx() throws Exception {
+        mockMvc.perform(delete("/api/v1/creators/hard"))
+                .andExpect(status().is4xxClientError());
+    }
+
+    // =========================================================
+    // POST /reactivate
+    // =========================================================
+
+    @Test
+    void reactivate_validUserId_returns200WithBody() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID creatorId = UUID.randomUUID();
+        Creator creator = new Creator();
+        creator.setId(creatorId);
+        CreatorResponse response = response(creatorId);
+
+        when(creatorService.reactivate(userId)).thenReturn(creator);
+        when(mapper.toCreatorResponse(creator)).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/creators/reactivate")
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(creatorId.toString()));
+    }
+
+    @Test
+    void reactivate_missingUserIdHeader_returns4xx() throws Exception {
+        mockMvc.perform(post("/api/v1/creators/reactivate"))
                 .andExpect(status().is4xxClientError());
     }
 }

@@ -1,19 +1,21 @@
 package com.thelook.ms_auth.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thelook.GlobalExceptionHandler;
 import com.thelook.exceptions.BusinessRuleException;
 import com.thelook.exceptions.InvalidAccessTokenException;
 import com.thelook.exceptions.UnprocessableRequestException;
-import com.thelook.ms_auth.config.SecurityConfig;
 import com.thelook.ms_auth.models.dtos.*;
 import com.thelook.ms_auth.services.AuthService;
+import com.thelook.ms_auth.services.GoogleAuthService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.context.annotation.Import;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.UUID;
 
@@ -23,13 +25,22 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
-    @Autowired MockMvc mockMvc;
-    @Autowired ObjectMapper objectMapper;
-    @MockitoBean AuthService authService;
+    @Mock AuthService authService;
+    @Mock GoogleAuthService googleAuthService;
+
+    MockMvc mockMvc;
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    @BeforeEach
+    void setUp() {
+        AuthController controller = new AuthController(authService, googleAuthService);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
 
     // =========================================================
     // POST /register
@@ -42,7 +53,7 @@ class AuthControllerTest {
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RegisterRequest("alice", "pass123"))))
+                        .content(objectMapper.writeValueAsString(new RegisterRequest("alice", "Pass1234!"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(id.toString()))
                 .andExpect(jsonPath("$.username").value("alice"));
@@ -82,7 +93,7 @@ class AuthControllerTest {
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RegisterRequest("alice", "pass"))))
+                        .content(objectMapper.writeValueAsString(new RegisterRequest("alice", "Pass1234!"))))
                 .andExpect(status().is4xxClientError());
     }
 

@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name="tb_creator")
+@Table(name = "tb_creator", indexes = @jakarta.persistence.Index(name = "idx_creator_user_id", columnList = "user_id"))
 public class Creator {
 
     @Id

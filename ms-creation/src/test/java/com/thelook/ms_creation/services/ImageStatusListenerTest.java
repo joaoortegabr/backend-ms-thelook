@@ -35,7 +35,7 @@ class ImageStatusListenerTest {
     void handleImageProcessed_tipoOUTFIT_atualizaImage1UrlEStatusReady() {
         UUID outfitId = UUID.randomUUID();
         Outfit outfit = outfitVazio(outfitId);
-        when(repository.findById(outfitId)).thenReturn(Optional.of(outfit));
+        when(repository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
 
         listener.handleImageProcessed(dto(outfitId, "original.jpg", "processed.webp", "OUTFIT"));
 
@@ -49,7 +49,7 @@ class ImageStatusListenerTest {
     void handleImageProcessed_tipoSECONDARY_atualizaImage2Url() {
         UUID outfitId = UUID.randomUUID();
         Outfit outfit = outfitVazio(outfitId);
-        when(repository.findById(outfitId)).thenReturn(Optional.of(outfit));
+        when(repository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
 
         listener.handleImageProcessed(dto(outfitId, "original.jpg", "processed2.webp", "SECONDARY"));
 
@@ -67,7 +67,7 @@ class ImageStatusListenerTest {
         item.setItemType(ItemType.SHIRT);
         item.setItemImg("original_item.jpg");
         outfit.getItems().add(item);
-        when(repository.findById(outfitId)).thenReturn(Optional.of(outfit));
+        when(repository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
 
         listener.handleImageProcessed(dto(outfitId, "original_item.jpg", "processed_item.webp", "ITEM"));
 
@@ -83,7 +83,7 @@ class ImageStatusListenerTest {
         Item item = new Item();
         item.setItemImg("outro_arquivo.jpg");
         outfit.getItems().add(item);
-        when(repository.findById(outfitId)).thenReturn(Optional.of(outfit));
+        when(repository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
 
         listener.handleImageProcessed(dto(outfitId, "nao_existe.jpg", "processed.webp", "ITEM"));
 
@@ -97,7 +97,7 @@ class ImageStatusListenerTest {
         UUID outfitId = UUID.randomUUID();
         Outfit outfit = outfitVazio(outfitId);
         outfit.setImage1Url("existente.jpg");
-        when(repository.findById(outfitId)).thenReturn(Optional.of(outfit));
+        when(repository.findWithItemsById(outfitId)).thenReturn(Optional.of(outfit));
 
         listener.handleImageProcessed(dto(outfitId, "original.jpg", "novo.webp", "UNKNOWN"));
 
@@ -109,7 +109,7 @@ class ImageStatusListenerTest {
     @Test
     void handleImageProcessed_outfitNaoEncontrado_naoSalva() {
         UUID outfitId = UUID.randomUUID();
-        when(repository.findById(outfitId)).thenReturn(Optional.empty());
+        when(repository.findWithItemsById(outfitId)).thenReturn(Optional.empty());
 
         listener.handleImageProcessed(dto(outfitId, "original.jpg", "processed.webp", "OUTFIT"));
 

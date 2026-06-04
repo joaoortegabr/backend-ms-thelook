@@ -6,7 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Service
@@ -23,6 +25,7 @@ public class SocialService {
         this.redisTemplate = redisTemplate;
     }
 
+    @Transactional(transactionManager = "neo4jTransactionManager")
     public void follow(UUID creatorId, UUID targetId) {
 
         if (creatorId.equals(targetId))
@@ -38,6 +41,7 @@ public class SocialService {
         log.info("Creator {} seguiu {}. Contador de seguidores de {} incrementado", creatorId, targetId, targetId);
     }
 
+    @Transactional(transactionManager = "neo4jTransactionManager")
     public void unfollow(UUID creatorId, UUID targetId) {
 
         if (!creatorNodeRepository.isFollowing(creatorId, targetId)) {
@@ -50,6 +54,7 @@ public class SocialService {
         log.info("Creator {} deixou de seguir {}. Contador decrementado", creatorId, targetId);
     }
 
+    @Transactional(transactionManager = "neo4jTransactionManager")
     public void favorite(UUID creatorId, UUID targetId) {
 
         if (creatorId.equals(targetId))
@@ -64,6 +69,7 @@ public class SocialService {
         log.info("Creator {} favoritou {}", creatorId, targetId);
     }
 
+    @Transactional(transactionManager = "neo4jTransactionManager")
     public void unfavorite(UUID creatorId, UUID targetId) {
 
         if (!creatorNodeRepository.isFavorite(creatorId, targetId)) {
@@ -75,6 +81,7 @@ public class SocialService {
         log.info("Creator {} desfavoritou {}", creatorId, targetId);
     }
 
+    @Transactional(transactionManager = "neo4jTransactionManager")
     public void likeOutfit(UUID creatorId, UUID outfitId) {
 
         if (creatorNodeRepository.isLiking(creatorId, outfitId)) {
@@ -87,6 +94,7 @@ public class SocialService {
         log.info("Creator {} curtiu outfit {}. Contador incrementado", creatorId, outfitId);
     }
 
+    @Transactional(transactionManager = "neo4jTransactionManager")
     public void unlikeOutfit(UUID creatorId, UUID outfitId) {
 
         if (!creatorNodeRepository.isLiking(creatorId, outfitId)) {
@@ -99,9 +107,12 @@ public class SocialService {
         log.info("Creator {} removeu curtida do outfit {}. Contador decrementado", creatorId, outfitId);
     }
 
+    private static final Duration COUNTER_TTL = Duration.ofDays(30);
+
     private void safeIncrement(String key) {
         try {
             redisTemplate.opsForValue().increment(key);
+            redisTemplate.expire(key, COUNTER_TTL);
         } catch (Exception e) {
             log.warn("Falha ao incrementar contador Redis '{}': {}", key, e.getMessage());
         }
@@ -110,6 +121,7 @@ public class SocialService {
     private void safeDecrement(String key) {
         try {
             redisTemplate.opsForValue().decrement(key);
+            redisTemplate.expire(key, COUNTER_TTL);
         } catch (Exception e) {
             log.warn("Falha ao decrementar contador Redis '{}': {}", key, e.getMessage());
         }

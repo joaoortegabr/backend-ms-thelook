@@ -51,7 +51,7 @@ class FeedControllerTest {
         when(hits.getTotalHits()).thenReturn(1L);
         when(feedService.searchFeed(any(), any(), any(), any(), anyInt(), any())).thenReturn(hits);
 
-        mockMvc.perform(get("/api/v1/outfits/feed"))
+        mockMvc.perform(get("/api/v1/outfits/feed").param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.outfits[0].id").value("outfit-1"))
@@ -70,7 +70,7 @@ class FeedControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(0))
                 .andExpect(jsonPath("$.outfits").isEmpty())
-                .andExpect(jsonPath("$.nextSortValues").isEmpty());
+                .andExpect(jsonPath("$.nextSortValues").doesNotExist());
     }
 
     @Test

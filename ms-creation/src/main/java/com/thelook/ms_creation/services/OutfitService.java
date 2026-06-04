@@ -15,7 +15,9 @@ import com.thelook.ms_creation.models.dtos.OutfitRequest;
 import com.thelook.ms_creation.models.mappers.OutfitMapper;
 import com.thelook.ms_creation.repositories.OutboxRepository;
 import com.thelook.ms_creation.repositories.OutfitRepository;
+import com.thelook.ms_creation.services.events.OutboxSavedEvent;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,15 +32,17 @@ public class OutfitService {
     private final ObjectMapper objectMapper;
     private final StorageService storageService;
     private final OutfitMapper outfitMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public OutfitService(OutfitRepository outfitRepository, OutboxRepository outboxRepository,
                          ObjectMapper objectMapper, StorageService storageService,
-                         OutfitMapper outfitMapper) {
+                         OutfitMapper outfitMapper, ApplicationEventPublisher eventPublisher) {
         this.outfitRepository = outfitRepository;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
         this.storageService = storageService;
         this.outfitMapper = outfitMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     public Outfit findById(UUID outfitId) {
@@ -103,6 +107,7 @@ public class OutfitService {
         }
 
         outboxRepository.save(message);
+        eventPublisher.publishEvent(new OutboxSavedEvent());
         return saved;
     }
 
@@ -115,8 +120,32 @@ public class OutfitService {
             throw new BusinessRuleException("Acesso negado para deletar este look");
         }
 
+        outfit.setIsActive(false);
+        outfit.setDeletedAt(java.time.LocalDateTime.now());
+        outfitRepository.save(outfit);
+
+        publishDeletedEvent(outfitId, creatorId);
+    }
+
+    @Transactional
+    public void hardDelete(UUID outfitId, UUID creatorId) {
+        Outfit outfit = outfitRepository.findWithItemsById(outfitId)
+                .orElseThrow(() -> new ResourceNotFoundException("Outfit não encontrado"));
+
+        if (!outfit.getCreatorId().equals(creatorId)) {
+            throw new BusinessRuleException("Acesso negado para deletar este look");
+        }
+
+        storageService.deleteImage(outfit.getImage1Url());
+        storageService.deleteImage(outfit.getImage2Url());
+        outfit.getItems().forEach(item -> storageService.deleteImage(item.getItemImg()));
+
         outfitRepository.delete(outfit);
 
+        publishDeletedEvent(outfitId, creatorId);
+    }
+
+    private void publishDeletedEvent(UUID outfitId, UUID creatorId) {
         OutboxMessage deleteEvent = new OutboxMessage();
         try {
             deleteEvent.setAggregateId(outfitId.toString());
@@ -126,6 +155,7 @@ public class OutfitService {
             throw new BusinessRuleException("Erro ao serializar evento de deleção: " + e.getMessage());
         }
         outboxRepository.save(deleteEvent);
+        eventPublisher.publishEvent(new OutboxSavedEvent());
     }
 
 }

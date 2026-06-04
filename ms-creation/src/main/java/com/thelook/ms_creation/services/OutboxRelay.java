@@ -2,27 +2,33 @@ package com.thelook.ms_creation.services;
 
 import com.thelook.ms_creation.entities.OutboxMessage;
 import com.thelook.ms_creation.repositories.OutboxRepository;
+import com.thelook.ms_creation.services.events.OutboxSavedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class OutboxRelay {
 
-    private static final long OUTBOX_RELAY_DELAY_MS = 1000;
+    private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
+
+    private static final long OUTBOX_RELAY_DELAY_MS = 200;
     private static final int MAX_RETRIES = 5;
 
-    private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
+    private final AtomicBoolean dirty = new AtomicBoolean(false);
 
     private final OutboxRepository outboxRepository;
     private final RabbitTemplate rabbitTemplate;
@@ -32,9 +38,16 @@ public class OutboxRelay {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @Scheduled(fixedDelay=OUTBOX_RELAY_DELAY_MS)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOutboxSaved(OutboxSavedEvent event) {
+        dirty.set(true);
+    }
+
+    @Scheduled(fixedDelay = OUTBOX_RELAY_DELAY_MS)
     @Transactional
     public void publishMessages() {
+        if (!dirty.compareAndSet(true, false)) return;
+
         Pageable page = PageRequest.of(0, 100);
         List<OutboxMessage> messages = outboxRepository.findByProcessedFalseAndRetryCountLessThan(MAX_RETRIES, page);
         List<UUID> processedIds = new ArrayList<>();
@@ -72,5 +85,12 @@ public class OutboxRelay {
         if (!processedIds.isEmpty()) {
             outboxRepository.markAsProcessed(processedIds);
         }
+    }
+
+    @Scheduled(cron = "0 0 5 * * *")
+    @Transactional
+    public void purgeProcessedMessages() {
+        outboxRepository.deleteProcessedBefore(LocalDateTime.now().minusDays(7));
+        log.info("Outbox: mensagens processadas com mais de 7 dias removidas");
     }
 }
