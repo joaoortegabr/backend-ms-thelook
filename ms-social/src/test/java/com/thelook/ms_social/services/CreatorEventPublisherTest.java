@@ -1,50 +1,61 @@
 package com.thelook.ms_social.services;
 
-import com.thelook.dtos.CreatorLifecycleEventDTO;
-import com.thelook.ms_social.config.RabbitMQConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thelook.ms_social.entities.OutboxMessage;
+import com.thelook.ms_social.repositories.OutboxRepository;
+import com.thelook.ms_social.services.events.OutboxSavedEvent;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CreatorEventPublisherTest {
 
-    @Mock RabbitTemplate rabbitTemplate;
+    @Mock OutboxRepository outboxRepository;
+    @Mock ApplicationEventPublisher eventPublisher;
 
-    @InjectMocks CreatorEventPublisher publisher;
+    CreatorEventPublisher publisher;
+
+    @BeforeEach
+    void setUp() {
+        publisher = new CreatorEventPublisher(outboxRepository, new ObjectMapper(), eventPublisher);
+    }
 
     // =========================================================
     // publishDeactivated
     // =========================================================
 
     @Test
-    void publishDeactivated_sendsDeactivatedEventWithCorrectPayload() {
+    void publishDeactivated_gravaNoOutboxComTipoCorreto() {
         UUID creatorId = UUID.randomUUID();
 
         publisher.publishDeactivated(creatorId);
 
-        ArgumentCaptor<CreatorLifecycleEventDTO> captor = ArgumentCaptor.forClass(CreatorLifecycleEventDTO.class);
-        verify(rabbitTemplate).convertAndSend(
-                eq(RabbitMQConfig.CREATOR_EXCHANGE),
-                eq(RabbitMQConfig.CREATOR_LIFECYCLE_KEY),
-                captor.capture());
+        ArgumentCaptor<OutboxMessage> captor = ArgumentCaptor.forClass(OutboxMessage.class);
+        verify(outboxRepository).save(captor.capture());
 
-        assertThat(captor.getValue().type()).isEqualTo("DEACTIVATED");
-        assertThat(captor.getValue().creatorId()).isEqualTo(creatorId);
-        assertThat(captor.getValue().userId()).isNull();
+        OutboxMessage saved = captor.getValue();
+        assertThat(saved.getType()).isEqualTo("CREATOR_DEACTIVATED");
+        assertThat(saved.getAggregateId()).isEqualTo(creatorId.toString());
+        assertThat(saved.getPayload()).contains("DEACTIVATED");
+        assertThat(saved.getPayload()).contains(creatorId.toString());
+    }
+
+    @Test
+    void publishDeactivated_publicaOutboxSavedEvent() {
+        publisher.publishDeactivated(UUID.randomUUID());
+
+        verify(eventPublisher).publishEvent(any(OutboxSavedEvent.class));
     }
 
     // =========================================================
@@ -52,20 +63,18 @@ class CreatorEventPublisherTest {
     // =========================================================
 
     @Test
-    void publishReactivated_sendsReactivatedEventWithCorrectPayload() {
+    void publishReactivated_gravaNoOutboxComTipoCorreto() {
         UUID creatorId = UUID.randomUUID();
 
         publisher.publishReactivated(creatorId);
 
-        ArgumentCaptor<CreatorLifecycleEventDTO> captor = ArgumentCaptor.forClass(CreatorLifecycleEventDTO.class);
-        verify(rabbitTemplate).convertAndSend(
-                eq(RabbitMQConfig.CREATOR_EXCHANGE),
-                eq(RabbitMQConfig.CREATOR_LIFECYCLE_KEY),
-                captor.capture());
+        ArgumentCaptor<OutboxMessage> captor = ArgumentCaptor.forClass(OutboxMessage.class);
+        verify(outboxRepository).save(captor.capture());
 
-        assertThat(captor.getValue().type()).isEqualTo("REACTIVATED");
-        assertThat(captor.getValue().creatorId()).isEqualTo(creatorId);
-        assertThat(captor.getValue().userId()).isNull();
+        OutboxMessage saved = captor.getValue();
+        assertThat(saved.getType()).isEqualTo("CREATOR_REACTIVATED");
+        assertThat(saved.getAggregateId()).isEqualTo(creatorId.toString());
+        assertThat(saved.getPayload()).contains("REACTIVATED");
     }
 
     // =========================================================
@@ -73,34 +82,46 @@ class CreatorEventPublisherTest {
     // =========================================================
 
     @Test
-    void publishPurged_sendsPurgedEventWithCreatorIdAndUserId() {
+    void publishPurged_gravaNoOutboxComCreatorIdEUserId() {
         UUID creatorId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
         publisher.publishPurged(creatorId, userId);
 
-        ArgumentCaptor<CreatorLifecycleEventDTO> captor = ArgumentCaptor.forClass(CreatorLifecycleEventDTO.class);
-        verify(rabbitTemplate).convertAndSend(
-                eq(RabbitMQConfig.CREATOR_EXCHANGE),
-                eq(RabbitMQConfig.CREATOR_LIFECYCLE_KEY),
-                captor.capture());
+        ArgumentCaptor<OutboxMessage> captor = ArgumentCaptor.forClass(OutboxMessage.class);
+        verify(outboxRepository).save(captor.capture());
 
-        assertThat(captor.getValue().type()).isEqualTo("PURGED");
-        assertThat(captor.getValue().creatorId()).isEqualTo(creatorId);
-        assertThat(captor.getValue().userId()).isEqualTo(userId);
+        OutboxMessage saved = captor.getValue();
+        assertThat(saved.getType()).isEqualTo("CREATOR_PURGED");
+        assertThat(saved.getAggregateId()).isEqualTo(creatorId.toString());
+        assertThat(saved.getPayload()).contains("PURGED");
+        assertThat(saved.getPayload()).contains(userId.toString());
     }
 
     // =========================================================
-    // Resilience — exception swallowed
+    // Garantia: não interage mais com RabbitMQ diretamente
     // =========================================================
 
     @Test
-    void publish_rabbitTemplateThrows_doesNotPropagateException() {
-        UUID creatorId = UUID.randomUUID();
-        doThrow(new RuntimeException("RabbitMQ unavailable"))
-                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class));
+    void publish_naoInterageDiretamenteComRabbitMQ() {
+        publisher.publishDeactivated(UUID.randomUUID());
+        publisher.publishReactivated(UUID.randomUUID());
+        publisher.publishPurged(UUID.randomUUID(), UUID.randomUUID());
 
-        assertThatCode(() -> publisher.publishDeactivated(creatorId))
-                .doesNotThrowAnyException();
+        // Verificação estrutural: o publisher não injeta mais RabbitTemplate
+        // Apenas outboxRepository e eventPublisher são chamados
+        verify(outboxRepository, times(3)).save(any(OutboxMessage.class));
+        verify(eventPublisher, times(3)).publishEvent(any(OutboxSavedEvent.class));
+    }
+
+    @Test
+    void publishDeactivated_repositorioFalha_propagaExcecaoENaoPublicaEvento() {
+        doThrow(new RuntimeException("DB fora")).when(outboxRepository).save(any(OutboxMessage.class));
+
+        assertThatThrownBy(() -> publisher.publishDeactivated(UUID.randomUUID()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("DB fora");
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }

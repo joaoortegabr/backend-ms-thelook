@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -105,6 +106,18 @@ class OutfitEventPublisherTest {
 
         List<String> itemImages = (List<String>) captor.getValue().get("itemImages");
         assertThat(itemImages).containsExactly("path/item1.jpg");
+    }
+
+    @Test
+    void publishOutfitCreated_rabbitFalha_propagaExcecao() {
+        Outfit outfit = outfitSemItens();
+        when(outfitMapper.toOutfitSyncDTO(outfit)).thenReturn(mockSyncDto(outfit.getId()));
+        doThrow(new org.springframework.amqp.AmqpException("Rabbit fora"))
+                .when(rabbitTemplate).convertAndSend(any(String.class), any(String.class), any(Object.class));
+
+        assertThatThrownBy(() -> publisher.publishOutfitCreated(outfit))
+                .isInstanceOf(org.springframework.amqp.AmqpException.class)
+                .hasMessageContaining("Rabbit fora");
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

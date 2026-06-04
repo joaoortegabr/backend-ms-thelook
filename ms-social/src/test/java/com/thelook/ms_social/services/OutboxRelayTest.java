@@ -1,8 +1,8 @@
-package com.thelook.ms_creation.services;
+package com.thelook.ms_social.services;
 
-import com.thelook.ms_creation.entities.OutboxMessage;
-import com.thelook.ms_creation.repositories.OutboxRepository;
-import com.thelook.ms_creation.services.events.OutboxSavedEvent;
+import com.thelook.ms_social.entities.OutboxMessage;
+import com.thelook.ms_social.repositories.OutboxRepository;
+import com.thelook.ms_social.services.events.OutboxSavedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,8 +46,8 @@ class OutboxRelayTest {
     }
 
     @Test
-    void publishMessages_comOutfitCreated_invocaRabbitEMarcaProcessada() {
-        OutboxMessage msg = mensagem(UUID.randomUUID(), "OUTFIT_CREATED", "{\"outfitId\":\"abc\"}");
+    void publishMessages_comCreatorDeactivated_invocaRabbitEMarcaProcessada() {
+        OutboxMessage msg = mensagem(UUID.randomUUID(), "CREATOR_DEACTIVATED", "{\"type\":\"DEACTIVATED\"}");
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 
@@ -60,8 +60,8 @@ class OutboxRelayTest {
     }
 
     @Test
-    void publishMessages_comOutfitUpdated_invocaRabbitEMarcaProcessada() {
-        OutboxMessage msg = mensagem(UUID.randomUUID(), "OUTFIT_UPDATED", "{\"outfitId\":\"abc\"}");
+    void publishMessages_comCreatorReactivated_invocaRabbitEMarcaProcessada() {
+        OutboxMessage msg = mensagem(UUID.randomUUID(), "CREATOR_REACTIVATED", "{\"type\":\"REACTIVATED\"}");
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 
@@ -73,8 +73,8 @@ class OutboxRelayTest {
     }
 
     @Test
-    void publishMessages_comOutfitDeleted_invocaRabbitEMarcaProcessada() {
-        OutboxMessage msg = mensagem(UUID.randomUUID(), "OUTFIT_DELETED", "{\"outfitId\":\"abc\"}");
+    void publishMessages_comCreatorPurged_invocaRabbitEMarcaProcessada() {
+        OutboxMessage msg = mensagem(UUID.randomUUID(), "CREATOR_PURGED", "{\"type\":\"PURGED\"}");
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 
@@ -87,7 +87,7 @@ class OutboxRelayTest {
 
     @Test
     void publishMessages_rabbitFalha_naoMarcaComoProcessadaEIncrementaRetry() {
-        OutboxMessage msg = mensagem(UUID.randomUUID(), "OUTFIT_CREATED", "{\"outfitId\":\"abc\"}");
+        OutboxMessage msg = mensagem(UUID.randomUUID(), "CREATOR_DEACTIVATED", "{\"type\":\"DEACTIVATED\"}");
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
         when(rabbitTemplate.invoke(any())).thenThrow(new RuntimeException("RabbitMQ fora"));
@@ -103,8 +103,8 @@ class OutboxRelayTest {
     void publishMessages_multiplas_invocaRabbitParaCadaEMarcaNoBatch() {
         UUID id1 = UUID.randomUUID();
         UUID id2 = UUID.randomUUID();
-        OutboxMessage msg1 = mensagem(id1, "OUTFIT_CREATED", "{\"id\":\"1\"}");
-        OutboxMessage msg2 = mensagem(id2, "OUTFIT_CREATED", "{\"id\":\"2\"}");
+        OutboxMessage msg1 = mensagem(id1, "CREATOR_DEACTIVATED", "{\"type\":\"DEACTIVATED\"}");
+        OutboxMessage msg2 = mensagem(id2, "CREATOR_PURGED", "{\"type\":\"PURGED\"}");
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg1, msg2));
 
@@ -122,8 +122,8 @@ class OutboxRelayTest {
     void publishMessages_segundaFalha_soMarcaPrimeiraEIncrementaRetryDaSegunda() {
         UUID id1 = UUID.randomUUID();
         UUID id2 = UUID.randomUUID();
-        OutboxMessage msg1 = mensagem(id1, "OUTFIT_CREATED", "{\"id\":\"1\"}");
-        OutboxMessage msg2 = mensagem(id2, "OUTFIT_CREATED", "{\"id\":\"2\"}");
+        OutboxMessage msg1 = mensagem(id1, "CREATOR_DEACTIVATED", "{\"type\":\"DEACTIVATED\"}");
+        OutboxMessage msg2 = mensagem(id2, "CREATOR_REACTIVATED", "{\"type\":\"REACTIVATED\"}");
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg1, msg2));
         when(rabbitTemplate.invoke(any()))
@@ -143,7 +143,7 @@ class OutboxRelayTest {
 
     @Test
     void publishMessages_tipoDesconhecido_marcaComoProcessadoSemInvocar() {
-        OutboxMessage msg = mensagem(UUID.randomUUID(), "UNKNOWN_TYPE", "{\"id\":\"1\"}");
+        OutboxMessage msg = mensagem(UUID.randomUUID(), "UNKNOWN_TYPE", "{\"type\":\"?\"}");
         when(outboxRepository.findByProcessedFalseAndRetryCountLessThan(anyInt(), any(Pageable.class)))
                 .thenReturn(List.of(msg));
 

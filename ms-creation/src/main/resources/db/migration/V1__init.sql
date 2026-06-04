@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS tb_outfit (
     style        VARCHAR(50)  NOT NULL,
     image_status VARCHAR(50),
     is_active    BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at   TIMESTAMP
+    created_at   TIMESTAMP,
+    deleted_at   TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_outfit_creator_id   ON tb_outfit(creator_id);
